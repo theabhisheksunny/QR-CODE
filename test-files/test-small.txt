@@ -1,0 +1,3 @@
+﻿UNIVERSAL_QR_TEST_FILE
+ID=001
+Created for E2E testing
