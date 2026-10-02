@@ -1,0 +1,45 @@
+version: '3.9'
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: qrshare
+      POSTGRES_USER: qrshare
+      POSTGRES_PASSWORD: qrshare
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qrshare"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/qrshare
+      DATABASE_USERNAME: qrshare
+      DATABASE_PASSWORD: qrshare
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+      FILE_STORAGE_PATH: /data/temp-files
+      ALLOWED_ORIGINS: http://localhost:3000
+    volumes:
+      - file_storage:/data/temp-files
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  file_storage:
