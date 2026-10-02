@@ -1,0 +1,31 @@
+{
+  "total": 30,
+  "passed": 30,
+  "failed": 0,
+  "skipped": 0,
+  "goldenPathPassed": true,
+  "failedTests": [],
+  "applicationBugsFound": [],
+  "testBugsFound": [
+    {
+      "description": "All test files used '../../../.agents/tasks/services-status.json' (3 levels up from e2e/tests), resolving to D:\\PROJECT-FINAL\\Kiro\\.agents\\... instead of D:\\PROJECT-FINAL\\Kiro\\QR-CODE\\.agents\\... The correct relative path is '../../.agents/tasks/services-status.json' (2 levels up).",
+      "fixed": true,
+      "filesFixed": [
+        "e2e/tests/01-homepage.spec.ts",
+        "e2e/tests/02-text-qr.spec.ts",
+        "e2e/tests/03-file-upload.spec.ts",
+        "e2e/tests/10-responsive.spec.ts",
+        "e2e/tests/11-golden-e2e.spec.ts"
+      ]
+    }
+  ],
+  "screenshotsDir": "d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\e2e\\test-results",
+  "highlights": {
+    "goldenPath": "Device A uploaded expiry-test.pdf → Device B accessed share page → hash matched (SHA-256: 7b54dd71...) → file deleted → Device B correctly received 404 → frontend showed 'File No Longer Available'",
+    "textQR": "All 5 value types passed: plain text, integer, decimal, URL, JSON",
+    "fileHash": "PDF, PNG, JPG all verified with SHA-256 hash comparison — all matched",
+    "security": "Invalid tokens return 404, tokens are non-sequential random strings (32+ chars), blank QR value rejected with 400",
+    "concurrent": "3 concurrent uploads produced unique tokens with correct file isolation",
+    "responsive": "Layout verified at desktop (1920x1080), tablet (768x1024), mobile (390x844)"
+  }
+}

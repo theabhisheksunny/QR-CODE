@@ -44,7 +44,7 @@ test.describe('File Upload and Device B Access', () => {
     expect(metaResult.data.fileSize).toBe(data.fileSize);
 
     // Device B: Browser context test
-    const statusPath = path.join(__dirname, '../../../.agents/tasks/services-status.json');
+    const statusPath = path.join(__dirname, '../../.agents/tasks/services-status.json');
     const status = JSON.parse(fs.readFileSync(statusPath, 'utf-8'));
     const FRONTEND_URL = status.frontendUrl || 'http://localhost:5173';
 
@@ -77,7 +77,7 @@ test.describe('File Upload and Device B Access', () => {
   });
 
   test('03 - upload screenshot: Device A file upload UI', async ({ page }) => {
-    const statusPath = path.join(__dirname, '../../../.agents/tasks/services-status.json');
+    const statusPath = path.join(__dirname, '../../.agents/tasks/services-status.json');
     const status = JSON.parse(fs.readFileSync(statusPath, 'utf-8'));
     const BASE_URL = status.frontendUrl || 'http://localhost:5173';
 

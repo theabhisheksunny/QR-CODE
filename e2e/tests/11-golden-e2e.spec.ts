@@ -6,7 +6,7 @@ import * as http from 'http';
 
 test.describe('Golden Path E2E', () => {
   test('11 - GOLDEN: Device A uploads → Device B downloads → hash match → delete → Device B gets 404', async ({ browser }) => {
-    const statusPath = path.join(__dirname, '../../../.agents/tasks/services-status.json');
+    const statusPath = path.join(__dirname, '../../.agents/tasks/services-status.json');
     const status = JSON.parse(fs.readFileSync(statusPath, 'utf-8'));
     const FRONTEND_URL = status.frontendUrl || 'http://localhost:5173';
 

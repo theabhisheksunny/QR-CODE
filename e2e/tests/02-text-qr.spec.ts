@@ -30,7 +30,7 @@ test.describe('Text/Value QR Generation', () => {
   });
 
   test('02 - UI: text QR page loads and generates QR', async ({ page }) => {
-    const statusPath = path.join(__dirname, '../../../.agents/tasks/services-status.json');
+    const statusPath = path.join(__dirname, '../../.agents/tasks/services-status.json');
     const status = JSON.parse(fs.readFileSync(statusPath, 'utf-8'));
     const BASE_URL = status.frontendUrl || 'http://localhost:5173';
 
