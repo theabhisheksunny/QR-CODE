@@ -73,7 +73,7 @@ export const FileCard = ({ file, onDeleted }: FileCardProps) => {
           Copy Link
         </button>
         <a
-          href={`/api/files/share/${file.shareUrl.split('/share/')[1]}`}
+          href={`/api/files/share/${file.shareUrl?.split('/share/')[1] ?? file.id}`}
           download={file.originalFileName}
           className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg transition-colors"
         >

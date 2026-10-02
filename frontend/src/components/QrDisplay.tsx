@@ -12,9 +12,12 @@ interface QrDisplayProps {
 export const QrDisplay = ({ qrCode, value, label, filename = 'qr-code' }: QrDisplayProps) => {
   const [copied, setCopied] = useState(false);
 
+  // Backend may return raw base64 without the data URI prefix
+  const qrSrc = qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`;
+
   const handleDownload = () => {
     const a = document.createElement('a');
-    a.href = qrCode;
+    a.href = qrSrc;
     a.download = `${filename}.png`;
     a.click();
     toast.success('QR code downloaded');
@@ -36,7 +39,7 @@ export const QrDisplay = ({ qrCode, value, label, filename = 'qr-code' }: QrDisp
         </span>
       )}
       <div className="p-3 bg-white rounded-xl shadow-md border border-gray-100 dark:border-slate-700">
-        <img src={qrCode} alt="QR Code" className="w-48 h-48 sm:w-56 sm:h-56" />
+        <img src={qrSrc} alt="QR Code" className="w-48 h-48 sm:w-56 sm:h-56" />
       </div>
       <div className="flex gap-2">
         <button

@@ -61,7 +61,8 @@ export const SharePage = () => {
   }
 
   const expired = isExpired(metadata.expiresAt);
-  const fileToken = metadata.shareUrl.split('/share/')[1];
+  // Extract token from shareUrl safely; fall back to the route param
+  const fileToken = metadata.shareUrl?.split('/share/')[1] ?? token ?? '';
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-6">
