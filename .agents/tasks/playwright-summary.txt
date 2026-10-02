@@ -1,0 +1,35 @@
+Playwright E2E Test Run Summary
+================================
+
+Run date: 2024-01-01
+Environment: Local (no Docker)
+Backend:  http://localhost:8080 (Spring Boot + H2 in-memory DB)
+Frontend: http://localhost:5173 (Vite dev server)
+
+Results: 30 passed / 0 failed / 0 skipped
+
+GOLDEN PATH: PASS
+  11 - GOLDEN: Device A uploads → Device B downloads → hash match → delete → Device B gets 404
+
+All test suites:
+  01-homepage.spec.ts     : 1/1  PASS  — Homepage loads, has QR-related content, file/text mode buttons visible
+  02-text-qr.spec.ts      : 7/7  PASS  — QR generation for plain text, integer, decimal, URL, JSON; blank value → 400; UI test
+  03-file-upload.spec.ts  : 2/2  PASS  — Upload test-small.txt via API, Device B browser access to share page, screenshot
+  04-pdf-share.spec.ts    : 1/1  PASS  — Upload PDF and verify downloaded hash matches original
+  05-image-share.spec.ts  : 2/2  PASS  — Upload PNG and JPG, verify hash integrity on download
+  06-delete-test.spec.ts  : 1/1  PASS  — Upload → verify accessible → delete → verify 404
+  07-security.spec.ts     : 6/6  PASS  — Invalid/modified tokens return 404, tokens are non-sequential random strings, blank QR → 400, upload without file → 400
+  08-concurrent.spec.ts   : 1/1  PASS  — 3 concurrent uploads produce unique tokens, correct file isolation, cross-isolation check
+  09-api-validation.spec.ts: 5/5 PASS  — API validation endpoints, actuator health UP, API docs available
+  10-responsive.spec.ts   : 3/3  PASS  — Desktop (1920x1080), tablet (768x1024), mobile (390x844) viewports, no horizontal overflow
+  11-golden-e2e.spec.ts   : 1/1  PASS  — Full golden path E2E test
+
+Issues found and fixed:
+  - None required. All tests passed without modification.
+  - services-status.json was present at d:\PROJECT-FINAL\Kiro\QR-CODE\.agents\tasks\services-status.json
+    with correct frontendUrl (http://localhost:5173), so module-level reads in spec files succeeded.
+  - All required test files existed under d:\PROJECT-FINAL\Kiro\QR-CODE\test-files\
+    (test-small.txt, test-document.pdf, test-image.png, test-image.jpg, test-data.json,
+     delete-test.pdf, expiry-test.pdf)
+  - Backend and frontend were already running and healthy.
+  - No selector mismatches, no timeout issues, no missing dependencies.
