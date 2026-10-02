@@ -1,4 +1,6 @@
-# QR Code Generator & Temporary File Sharing
+# Universal QR Code Generator & File Sharing
+
+> **No database required.** No Docker required for local development.
 
 ![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen?logo=springboot)
@@ -6,8 +8,61 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)
 ![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38BDF8?logo=tailwindcss)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker)
+
+---
+
+## Quick Start (Local Development)
+
+### 1. Start the backend
+
+```powershell
+cd backend
+mvn spring-boot:run
+```
+
+The backend starts at http://localhost:8080  
+Files are stored in `./storage/files/` and `./storage/metadata/`
+
+### 2. Start the frontend
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend starts at http://localhost:5173
+
+### 3. Open
+
+http://localhost:5173
+
+---
+
+## Configuration
+
+| Environment Variable | Default | Description |
+|---------------------|---------|-------------|
+| `FILE_STORAGE_PATH` | `./storage/files` | Where uploaded files are stored on disk |
+| `METADATA_STORAGE_PATH` | `./storage/metadata` | Where metadata JSON files are stored |
+| `APP_BASE_URL` | `http://localhost:8080` | Base URL used in share links and QR codes |
+| `MAX_FILE_SIZE_MB` | `25` | Maximum upload file size in megabytes |
+| `DEFAULT_EXPIRATION_MINUTES` | `30` | Default file expiry time in minutes |
+| `ALLOWED_ORIGINS` | `http://localhost:5173` | CORS allowed origins (comma-separated) |
+| `CLEANUP_INTERVAL_MS` | `60000` | How often (ms) the background cleanup job runs |
+
+---
+
+## Optional: Docker Deployment
+
+A `docker-compose.yml` is provided for containerised deployment. Docker is **not** required for local development.
+
+```bash
+docker compose up --build
+```
+
+---
 
 ---
 
@@ -73,34 +128,42 @@ Files expire after a configurable duration (default 30 minutes). Expired files a
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                   Spring Boot 3 (port 8080)                     │
+│                  No database — no Docker required               │
 │                                                                 │
-│   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────────┐  │
-│   │controller│→ │ service  │→ │repository│→ │  PostgreSQL │  │
-│   └──────────┘  └────┬─────┘  └──────────┘  │  (port 5432)│  │
-│                       │                       └─────────────┘  │
-│                       │ FileStorageService                      │
-│                       ▼                                         │
+│   ┌──────────┐  ┌──────────────────────┐                       │
+│   │controller│→ │    FileShareService  │                       │
+│   └──────────┘  └──────────┬───────────┘                       │
+│                             │                                   │
+│                    ┌────────┴────────┐                          │
+│                    ▼                 ▼                          │
+│          FileStorageService   MetadataStorageService            │
+│                    │                 │                          │
+│                    ▼                 ▼                          │
 │   ┌──────────────────────────────────────────────────────────┐ │
-│   │          Local Disk  /data/temp-files/                   │ │
-│   │          (Docker volume: file_storage)                   │ │
+│   │          Local Disk  ./storage/                          │ │
 │   │                                                          │ │
-│   │  550e8400-e29b-41d4-a716-446655440000   ← physical file  │ │
-│   │  8f7c3a21-bc44-4f1e-9d3a-123456789abc   ← physical file  │ │
+│   │  files/                                                  │ │
+│   │    550e8400-e29b-41d4-a716-446655440000  ← file blob     │ │
+│   │    8f7c3a21-bc44-4f1e-9d3a-123456789abc  ← file blob     │ │
+│   │                                                          │ │
+│   │  metadata/                                               │ │
+│   │    550e8400-....json  ← {token, fileName, expiry, ...}   │ │
+│   │    8f7c3a21-....json  ← {token, fileName, expiry, ...}   │ │
 │   └──────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Quick Start (Docker Compose)
+## Docker Deployment (Optional)
 
-> Requires Docker Desktop with Compose v2.
+> Docker is not required. See [Quick Start](#quick-start-local-development) above for the simpler local path.
 
 ```bash
 git clone https://github.com/your-org/QR-CODE.git
 cd QR-CODE
 
-# (Optional) override base URL — needed for LAN / production use
+# (Optional) override base URL for LAN / production use
 cp .env.example .env
 
 docker compose up --build
@@ -112,15 +175,11 @@ docker compose up --build
 | Backend API | http://localhost:8080                  |
 | Swagger UI  | http://localhost:8080/swagger-ui.html  |
 
-To stop and remove containers:
-
 ```bash
+# Stop
 docker compose down
-```
 
-To also wipe persisted volumes (database + uploaded files):
-
-```bash
+# Stop and wipe volumes (uploaded files)
 docker compose down -v
 ```
 
@@ -130,24 +189,15 @@ docker compose down -v
 
 ### Prerequisites
 
-| Tool        | Version   |
-|-------------|-----------|
-| Java        | 21+       |
-| Maven       | 3.9+      |
-| Node.js     | 18+       |
-| PostgreSQL  | 15 or 16  |
+| Tool    | Version |
+|---------|---------|
+| Java    | 21+     |
+| Maven   | 3.9+    |
+| Node.js | 18+     |
+
+No database installation required.
 
 ### Backend
-
-Create the database first:
-
-```sql
-CREATE DATABASE qrshare;
-CREATE USER qrshare WITH PASSWORD 'qrshare';
-GRANT ALL PRIVILEGES ON DATABASE qrshare TO qrshare;
-```
-
-Then run:
 
 ```bash
 cd backend
@@ -155,7 +205,7 @@ mvn spring-boot:run
 # Listening on http://localhost:8080
 ```
 
-The backend reads environment variables (see table below). You can export them in your shell or set them in a `.env` file loaded by your IDE.
+The backend reads environment variables (see table above). You can export them in your shell or set them in a `.env` file loaded by your IDE.
 
 ### Frontend
 
@@ -171,19 +221,17 @@ npm run dev
 
 ## Environment Variables
 
-All variables are optional — the defaults work for local development. Set them in `.env` (for Docker Compose) or export them in your shell (for local runs).
+All variables are optional — the defaults work for local development. Set them in `.env` (for Docker Compose) or export them in your shell.
 
-| Variable                    | Default                                      | Description                                                                 |
-|-----------------------------|----------------------------------------------|-----------------------------------------------------------------------------|
-| `APP_BASE_URL`              | `http://localhost:8080`                      | Public base URL used when building share links embedded in QR codes         |
-| `FILE_STORAGE_PATH`         | `./temp-files`                               | Directory where uploaded files are stored on disk                           |
-| `DEFAULT_EXPIRATION_MINUTES`| `30`                                         | Default file expiration time in minutes when the user does not pick one     |
-| `MAX_FILE_SIZE_MB`          | `25`                                         | Maximum accepted upload size in megabytes                                   |
-| `DATABASE_URL`              | `jdbc:postgresql://localhost:5432/qrshare`   | JDBC connection URL for PostgreSQL                                          |
-| `DATABASE_USERNAME`         | `qrshare`                                    | PostgreSQL username                                                         |
-| `DATABASE_PASSWORD`         | `qrshare`                                    | PostgreSQL password                                                         |
-| `ALLOWED_ORIGINS`           | `http://localhost:5173`                      | Comma-separated origins allowed by CORS (use frontend URL in production)    |
-| `CLEANUP_INTERVAL_MS`       | `60000`                                      | How often (milliseconds) the scheduled cleanup job runs to delete expired files |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `APP_BASE_URL` | `http://localhost:8080` | Public base URL used when building share links and QR codes |
+| `FILE_STORAGE_PATH` | `./storage/files` | Directory where uploaded files are stored on disk |
+| `METADATA_STORAGE_PATH` | `./storage/metadata` | Directory where metadata JSON files are stored |
+| `DEFAULT_EXPIRATION_MINUTES` | `30` | Default file expiration time in minutes |
+| `MAX_FILE_SIZE_MB` | `25` | Maximum accepted upload size in megabytes |
+| `ALLOWED_ORIGINS` | `http://localhost:5173` | Comma-separated CORS-allowed origins |
+| `CLEANUP_INTERVAL_MS` | `60000` | How often (ms) the background cleanup job runs |
 
 ---
 
@@ -241,11 +289,11 @@ All variables are optional — the defaults work for local development. Set them
 
 ## Security Notes
 
-- **Token hashing** — the raw access token is never stored in the database. Only a SHA-256 hash is persisted. The raw token lives only in the share URL and is never logged.
-- **No predictable IDs** — share URLs use a cryptographically random token (`SecureRandom`), not sequential database IDs (`/share/1`, `/share/2`).
-- **No original filenames as paths** — physical files are stored using a UUID as the filename. The original filename is only kept in the database as metadata.
+- **No predictable IDs** — share URLs use a cryptographically random token (`SecureRandom`), not sequential IDs (`/share/1`, `/share/2`).
+- **No original filenames as paths** — physical files are stored using a UUID as the filename. The original filename is kept only in the metadata JSON.
 - **Controlled file access** — `FILE_STORAGE_PATH` is never exposed as a public static directory. All file reads go through `GET /api/files/share/{token}`, which validates the token, checks expiration, and sets the correct `Content-Type` and `Content-Disposition` headers.
-- **Expiry enforcement** — expiration is stored in PostgreSQL, not in memory, so it survives application restarts.
+- **Expiry enforcement** — expiration is stored in the metadata JSON file on disk and survives application restarts.
+- **No database attack surface** — there is no database to SQL-inject. Metadata is read from isolated per-file JSON documents.
 
 ---
 
@@ -298,16 +346,15 @@ QR-CODE/
 │   │   └── com/qrshare/
 │   │       ├── controller/   # REST endpoints
 │   │       ├── service/      # Business logic
-│   │       ├── repository/   # Spring Data JPA
-│   │       ├── model/        # JPA entities
+│   │       ├── model/        # Plain Java POJOs (no ORM)
 │   │       ├── dto/          # Request / response objects
-│   │       ├── config/       # CORS, security, app config
+│   │       ├── config/       # CORS, app config, ObjectMapper
 │   │       ├── exception/    # Global error handling
 │   │       ├── storage/      # FileStorageService + LocalImpl
+│   │       │                 # MetadataStorageService + LocalImpl
 │   │       └── util/         # Token generation, MIME helpers
 │   └── src/main/resources/
-│       ├── application.yml
-│       └── db/migration/     # Flyway SQL migrations
+│       └── application.yml
 ├── frontend/                 # React + Vite application
 │   ├── src/
 │   │   ├── components/       # Reusable UI components
@@ -316,8 +363,12 @@ QR-CODE/
 │   │   ├── api/              # Axios API client
 │   │   └── types/            # TypeScript interfaces
 │   └── vite.config.ts        # Dev proxy: /api → :8080
+├── storage/                  # Runtime data (git-ignored)
+│   ├── files/                # Uploaded file blobs (UUID-named)
+│   └── metadata/             # One JSON file per upload
 ├── docker-compose.yml
 ├── .env.example
+├── FINAL-REPORT.md
 └── README.md
 ```
 
