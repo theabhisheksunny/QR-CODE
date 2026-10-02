@@ -83,7 +83,7 @@
     <dependency>
       <groupId>com.h2database</groupId>
       <artifactId>h2</artifactId>
-      <scope>test</scope>
+      <!-- runtime scope so the localtest profile (native dev) can use H2 -->
     </dependency>
   </dependencies>
   <build>

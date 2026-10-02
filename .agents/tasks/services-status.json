@@ -1,0 +1,7 @@
+{
+  "dockerMode": false,
+  "frontendUrl": "http://localhost:5173",
+  "backendUrl": "http://localhost:8080",
+  "allHealthy": true,
+  "notes": "Docker not available. PostgreSQL not available locally. Started backend with H2 in-memory DB using localtest Spring profile (application-localtest.yml). Frontend started via Vite dev server. Backend health: {\"status\":\"UP\"}. Frontend returns HTTP 200. API docs (/v3/api-docs) returns HTTP 200. No ERROR lines in backend log. H2 dependency scope changed from test to runtime in pom.xml to support localtest profile."
+}
