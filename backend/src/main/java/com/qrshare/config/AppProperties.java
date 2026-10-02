@@ -9,6 +9,7 @@ public class AppProperties {
 
     private String baseUrl = "http://localhost:8080";
     private Storage storage = new Storage();
+    private String metadataStoragePath = "./storage/metadata";
     private int defaultExpirationMinutes = 30;
     private int maxFileSizeMb = 25;
     private long cleanupIntervalMs = 60000L;
@@ -16,6 +17,6 @@ public class AppProperties {
 
     @Data
     public static class Storage {
-        private String path = "./temp-files";
+        private String path = "./storage/files";
     }
 }

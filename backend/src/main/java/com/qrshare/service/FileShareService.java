@@ -6,15 +6,14 @@ import com.qrshare.dto.FileUploadResponse;
 import com.qrshare.exception.FileExpiredException;
 import com.qrshare.exception.FileNotFoundException;
 import com.qrshare.exception.FileTooLargeException;
-import com.qrshare.model.SharedFile;
-import com.qrshare.repository.SharedFileRepository;
+import com.qrshare.storage.MetadataStorageService;
+import com.qrshare.storage.SharedFileMetadata;
 import com.qrshare.storage.FileStorageService;
 import com.qrshare.util.TokenUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -27,13 +26,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class FileShareService {
 
-    private final SharedFileRepository sharedFileRepository;
+    private final MetadataStorageService metadataStorageService;
     private final FileStorageService fileStorageService;
     private final QrCodeService qrCodeService;
     private final TokenUtil tokenUtil;
     private final AppProperties appProperties;
 
-    @Transactional
     public FileUploadResponse uploadFile(MultipartFile file, int expirationMinutes) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File must not be empty");
@@ -48,7 +46,6 @@ public class FileShareService {
 
         String storageKey = UUID.randomUUID().toString();
         String rawToken = tokenUtil.generateToken();
-        String tokenHash = tokenUtil.hashToken(rawToken);
 
         try {
             fileStorageService.store(file.getInputStream(), storageKey, file.getContentType());
@@ -57,133 +54,124 @@ public class FileShareService {
         }
 
         Instant now = Instant.now();
-        SharedFile sharedFile = SharedFile.builder()
+        SharedFileMetadata metadata = SharedFileMetadata.builder()
+            .id(UUID.randomUUID())
+            .token(rawToken)
             .originalFileName(file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown")
             .storageKey(storageKey)
             .contentType(file.getContentType())
             .fileSize(file.getSize())
-            .tokenHash(tokenHash)
             .createdAt(now)
             .expiresAt(now.plus(expirationMinutes, ChronoUnit.MINUTES))
             .downloadCount(0)
-            .status(SharedFile.FileStatus.ACTIVE)
+            .status("ACTIVE")
             .build();
 
-        sharedFile = sharedFileRepository.save(sharedFile);
+        metadata = metadataStorageService.save(metadata);
 
         String shareUrl = buildShareUrl(rawToken);
         String qrCode = qrCodeService.generateQrCode(shareUrl);
 
-        log.info("File uploaded: id={}, name={}, expires={}", sharedFile.getId(),
-            sharedFile.getOriginalFileName(), sharedFile.getExpiresAt());
+        log.info("File uploaded: id={}, name={}, expires={}", metadata.getId(),
+            metadata.getOriginalFileName(), metadata.getExpiresAt());
 
         return FileUploadResponse.builder()
-            .id(sharedFile.getId())
-            .originalFileName(sharedFile.getOriginalFileName())
-            .contentType(sharedFile.getContentType())
-            .fileSize(sharedFile.getFileSize())
+            .id(metadata.getId())
+            .originalFileName(metadata.getOriginalFileName())
+            .contentType(metadata.getContentType())
+            .fileSize(metadata.getFileSize())
             .shareUrl(shareUrl)
             .qrCode(qrCode)
-            .createdAt(sharedFile.getCreatedAt())
-            .expiresAt(sharedFile.getExpiresAt())
-            .downloadCount(sharedFile.getDownloadCount())
+            .createdAt(metadata.getCreatedAt())
+            .expiresAt(metadata.getExpiresAt())
+            .downloadCount(metadata.getDownloadCount())
             .build();
     }
 
-    @Transactional(readOnly = true)
     public FileMetadataResponse getFileMetadata(UUID id) {
-        SharedFile sharedFile = sharedFileRepository.findByIdAndStatus(id, SharedFile.FileStatus.ACTIVE)
+        SharedFileMetadata metadata = metadataStorageService.findById(id)
+            .filter(m -> "ACTIVE".equals(m.getStatus()))
             .orElseThrow(() -> new FileNotFoundException("File not found with id: " + id));
 
-        if (sharedFile.getExpiresAt().isBefore(Instant.now())) {
+        if (metadata.getExpiresAt().isBefore(Instant.now())) {
             throw new FileExpiredException("File with id " + id + " has expired");
         }
 
-        return mapToMetadataResponse(sharedFile, null);
+        return mapToMetadataResponse(metadata, null);
     }
 
-    @Transactional
     public FileMetadataResponse getFileByToken(String rawToken) {
-        SharedFile sharedFile = resolveAndValidateToken(rawToken);
-
-        sharedFile.setDownloadCount(sharedFile.getDownloadCount() + 1);
-        sharedFileRepository.save(sharedFile);
-
+        SharedFileMetadata metadata = resolveAndValidateToken(rawToken);
+        metadata.setDownloadCount(metadata.getDownloadCount() + 1);
+        metadataStorageService.save(metadata);
         String shareUrl = buildShareUrl(rawToken);
-        return mapToMetadataResponse(sharedFile, shareUrl);
+        return mapToMetadataResponse(metadata, shareUrl);
     }
 
-    @Transactional(readOnly = true)
     public FileMetadataResponse getFileMetadataByToken(String rawToken) {
-        SharedFile sharedFile = resolveAndValidateToken(rawToken);
+        SharedFileMetadata metadata = resolveAndValidateToken(rawToken);
         String shareUrl = buildShareUrl(rawToken);
-        return mapToMetadataResponse(sharedFile, shareUrl);
+        return mapToMetadataResponse(metadata, shareUrl);
     }
 
-    @Transactional(readOnly = true)
     public Resource loadFileResource(String rawToken) {
-        SharedFile sharedFile = resolveAndValidateToken(rawToken);
+        SharedFileMetadata metadata = resolveAndValidateToken(rawToken);
         try {
-            return fileStorageService.load(sharedFile.getStorageKey());
+            return fileStorageService.load(metadata.getStorageKey());
         } catch (IOException e) {
             throw new FileNotFoundException("Could not load file resource: " + e.getMessage());
         }
     }
 
-    @Transactional
-    public SharedFile getSharedFileForStreaming(String rawToken) {
+    public SharedFileMetadata getSharedFileForStreaming(String rawToken) {
         return resolveAndValidateToken(rawToken);
     }
 
-    @Transactional
     public void incrementDownloadCount(UUID id) {
-        sharedFileRepository.findById(id).ifPresent(file -> {
-            file.setDownloadCount(file.getDownloadCount() + 1);
-            sharedFileRepository.save(file);
+        metadataStorageService.findById(id).ifPresent(m -> {
+            m.setDownloadCount(m.getDownloadCount() + 1);
+            metadataStorageService.save(m);
         });
     }
 
-    @Transactional
     public void deleteFile(UUID id) {
-        SharedFile sharedFile = sharedFileRepository.findById(id)
+        SharedFileMetadata metadata = metadataStorageService.findById(id)
             .orElseThrow(() -> new FileNotFoundException("File not found with id: " + id));
 
-        fileStorageService.delete(sharedFile.getStorageKey());
-        sharedFile.setStatus(SharedFile.FileStatus.DELETED);
-        sharedFileRepository.save(sharedFile);
+        fileStorageService.delete(metadata.getStorageKey());
+        metadataStorageService.delete(id);
         log.info("File deleted: id={}", id);
     }
 
-    private SharedFile resolveAndValidateToken(String rawToken) {
-        String tokenHash = tokenUtil.hashToken(rawToken);
-        SharedFile sharedFile = sharedFileRepository.findByTokenHash(tokenHash)
+    private SharedFileMetadata resolveAndValidateToken(String rawToken) {
+        SharedFileMetadata metadata = metadataStorageService.findByToken(rawToken)
             .orElseThrow(() -> new FileNotFoundException("File not found for provided token"));
 
-        if (sharedFile.getStatus() != SharedFile.FileStatus.ACTIVE) {
+        if (!"ACTIVE".equals(metadata.getStatus())) {
             throw new FileNotFoundException("File is no longer available");
         }
 
-        if (sharedFile.getExpiresAt().isBefore(Instant.now())) {
+        if (metadata.getExpiresAt().isBefore(Instant.now())) {
             throw new FileExpiredException("File has expired and is no longer accessible");
         }
 
-        return sharedFile;
+        return metadata;
     }
 
     private String buildShareUrl(String rawToken) {
         return appProperties.getBaseUrl() + "/api/files/share/" + rawToken;
     }
 
-    private FileMetadataResponse mapToMetadataResponse(SharedFile sharedFile, String shareUrl) {
+    private FileMetadataResponse mapToMetadataResponse(SharedFileMetadata metadata, String shareUrl) {
         return FileMetadataResponse.builder()
-            .id(sharedFile.getId())
-            .originalFileName(sharedFile.getOriginalFileName())
-            .contentType(sharedFile.getContentType())
-            .fileSize(sharedFile.getFileSize())
+            .id(metadata.getId())
+            .originalFileName(metadata.getOriginalFileName())
+            .contentType(metadata.getContentType())
+            .fileSize(metadata.getFileSize())
             .shareUrl(shareUrl)
-            .createdAt(sharedFile.getCreatedAt())
-            .expiresAt(sharedFile.getExpiresAt())
-            .downloadCount(sharedFile.getDownloadCount())
+            .createdAt(metadata.getCreatedAt())
+            .expiresAt(metadata.getExpiresAt())
+            .downloadCount(metadata.getDownloadCount())
             .build();
     }
 }

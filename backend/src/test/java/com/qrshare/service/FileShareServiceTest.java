@@ -5,13 +5,12 @@ import com.qrshare.dto.FileUploadResponse;
 import com.qrshare.exception.FileExpiredException;
 import com.qrshare.exception.FileNotFoundException;
 import com.qrshare.exception.FileTooLargeException;
-import com.qrshare.model.SharedFile;
-import com.qrshare.repository.SharedFileRepository;
+import com.qrshare.storage.MetadataStorageService;
+import com.qrshare.storage.SharedFileMetadata;
 import com.qrshare.storage.FileStorageService;
 import com.qrshare.util.TokenUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -36,7 +35,7 @@ import static org.mockito.Mockito.*;
 class FileShareServiceTest {
 
     @Mock
-    private SharedFileRepository sharedFileRepository;
+    private MetadataStorageService metadataStorageService;
 
     @Mock
     private FileStorageService fileStorageService;
@@ -55,7 +54,6 @@ class FileShareServiceTest {
 
     private static final UUID FILE_ID = UUID.randomUUID();
     private static final String RAW_TOKEN = "abc123rawtoken456abc123rawtoken4"; // 32 chars
-    private static final String TOKEN_HASH = "deadbeef01020304deadbeef01020304deadbeef01020304deadbeef01020304";
 
     // -------------------------------------------------------------------------
     // uploadFile — success
@@ -66,7 +64,6 @@ class FileShareServiceTest {
         when(appProperties.getMaxFileSizeMb()).thenReturn(25);
         when(appProperties.getBaseUrl()).thenReturn("http://localhost:8080");
         when(tokenUtil.generateToken()).thenReturn(RAW_TOKEN);
-        when(tokenUtil.hashToken(RAW_TOKEN)).thenReturn(TOKEN_HASH);
         when(qrCodeService.generateQrCode(anyString())).thenReturn("data:image/png;base64,QRDATA");
 
         MultipartFile mockFile = mock(MultipartFile.class);
@@ -77,26 +74,26 @@ class FileShareServiceTest {
         when(mockFile.getContentType()).thenReturn("text/plain");
         when(mockFile.getInputStream()).thenReturn(new ByteArrayInputStream(content));
 
-        SharedFile savedFile = SharedFile.builder()
+        SharedFileMetadata savedMetadata = SharedFileMetadata.builder()
                 .id(FILE_ID)
+                .token(RAW_TOKEN)
                 .originalFileName("test.txt")
                 .contentType("text/plain")
                 .fileSize((long) content.length)
-                .tokenHash(TOKEN_HASH)
                 .storageKey("some-uuid")
                 .createdAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(1800))
                 .downloadCount(0)
-                .status(SharedFile.FileStatus.ACTIVE)
+                .status("ACTIVE")
                 .build();
 
-        when(sharedFileRepository.save(any(SharedFile.class))).thenReturn(savedFile);
+        when(metadataStorageService.save(any(SharedFileMetadata.class))).thenReturn(savedMetadata);
         when(fileStorageService.store(any(), anyString(), anyString())).thenReturn("some-uuid");
 
         FileUploadResponse response = fileShareService.uploadFile(mockFile, 30);
 
         verify(fileStorageService).store(any(), anyString(), anyString());
-        verify(sharedFileRepository).save(any(SharedFile.class));
+        verify(metadataStorageService).save(any(SharedFileMetadata.class));
         assertThat(response.getShareUrl()).isNotBlank();
         assertThat(response.getQrCode()).startsWith("data:image/png;base64,");
         assertThat(response.getId()).isEqualTo(FILE_ID);
@@ -119,7 +116,7 @@ class FileShareServiceTest {
         assertThatThrownBy(() -> fileShareService.uploadFile(mockFile, 30))
                 .isInstanceOf(FileTooLargeException.class);
 
-        verify(sharedFileRepository, never()).save(any());
+        verify(metadataStorageService, never()).save(any());
         verify(fileStorageService, never()).store(any(), any(), any());
     }
 
@@ -130,8 +127,7 @@ class FileShareServiceTest {
     @Test
     void testGetFileMetadata_notFound() {
         UUID randomId = UUID.randomUUID();
-        when(sharedFileRepository.findByIdAndStatus(randomId, SharedFile.FileStatus.ACTIVE))
-                .thenReturn(Optional.empty());
+        when(metadataStorageService.findById(randomId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> fileShareService.getFileMetadata(randomId))
                 .isInstanceOf(FileNotFoundException.class);
@@ -143,19 +139,18 @@ class FileShareServiceTest {
 
     @Test
     void testGetFileByToken_expired() {
-        SharedFile expiredFile = SharedFile.builder()
+        SharedFileMetadata expiredMetadata = SharedFileMetadata.builder()
                 .id(FILE_ID)
+                .token(RAW_TOKEN)
                 .originalFileName("old.txt")
                 .storageKey("key-123")
-                .tokenHash(TOKEN_HASH)
                 .createdAt(Instant.now().minusSeconds(7200))
                 .expiresAt(Instant.now().minusSeconds(3600)) // already expired
                 .downloadCount(0)
-                .status(SharedFile.FileStatus.ACTIVE)
+                .status("ACTIVE")
                 .build();
 
-        when(tokenUtil.hashToken(RAW_TOKEN)).thenReturn(TOKEN_HASH);
-        when(sharedFileRepository.findByTokenHash(TOKEN_HASH)).thenReturn(Optional.of(expiredFile));
+        when(metadataStorageService.findByToken(RAW_TOKEN)).thenReturn(Optional.of(expiredMetadata));
 
         assertThatThrownBy(() -> fileShareService.getFileByToken(RAW_TOKEN))
                 .isInstanceOf(FileExpiredException.class);
@@ -167,25 +162,22 @@ class FileShareServiceTest {
 
     @Test
     void testDeleteFile_success() {
-        SharedFile activeFile = SharedFile.builder()
+        SharedFileMetadata activeMetadata = SharedFileMetadata.builder()
                 .id(FILE_ID)
+                .token(RAW_TOKEN)
                 .originalFileName("delete-me.txt")
                 .storageKey("key-to-delete")
-                .tokenHash(TOKEN_HASH)
                 .createdAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(1800))
                 .downloadCount(0)
-                .status(SharedFile.FileStatus.ACTIVE)
+                .status("ACTIVE")
                 .build();
 
-        when(sharedFileRepository.findById(FILE_ID)).thenReturn(Optional.of(activeFile));
+        when(metadataStorageService.findById(FILE_ID)).thenReturn(Optional.of(activeMetadata));
 
         fileShareService.deleteFile(FILE_ID);
 
         verify(fileStorageService).delete("key-to-delete");
-
-        ArgumentCaptor<SharedFile> captor = ArgumentCaptor.forClass(SharedFile.class);
-        verify(sharedFileRepository).save(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo(SharedFile.FileStatus.DELETED);
+        verify(metadataStorageService).delete(FILE_ID);
     }
 }

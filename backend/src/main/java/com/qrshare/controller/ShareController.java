@@ -1,8 +1,8 @@
 package com.qrshare.controller;
 
-import com.qrshare.model.SharedFile;
 import com.qrshare.service.FileShareService;
 import com.qrshare.storage.FileStorageService;
+import com.qrshare.storage.SharedFileMetadata;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -24,43 +24,35 @@ public class ShareController {
     private final FileShareService fileShareService;
     private final FileStorageService fileStorageService;
 
-    /**
-     * Primary file streaming endpoint used in share URLs and QR codes.
-     * Increments download count and streams the file to the caller.
-     */
     @GetMapping("/api/files/share/{token}")
     @Operation(summary = "Stream or download a shared file using its access token")
     public ResponseEntity<Resource> streamFile(@PathVariable String token) throws IOException {
-        SharedFile sharedFile = fileShareService.getSharedFileForStreaming(token);
-        Resource resource = fileStorageService.load(sharedFile.getStorageKey());
+        SharedFileMetadata metadata = fileShareService.getSharedFileForStreaming(token);
+        Resource resource = fileStorageService.load(metadata.getStorageKey());
 
-        fileShareService.incrementDownloadCount(sharedFile.getId());
+        fileShareService.incrementDownloadCount(metadata.getId());
 
-        String contentType = sharedFile.getContentType() != null
-            ? sharedFile.getContentType()
+        String contentType = metadata.getContentType() != null
+            ? metadata.getContentType()
             : MediaType.APPLICATION_OCTET_STREAM_VALUE;
 
-        String disposition = resolveContentDisposition(contentType, sharedFile.getOriginalFileName());
+        String disposition = resolveContentDisposition(contentType, metadata.getOriginalFileName());
 
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, disposition);
         headers.add(HttpHeaders.CONTENT_TYPE, contentType);
-        if (sharedFile.getFileSize() != null) {
-            headers.add(HttpHeaders.CONTENT_LENGTH, String.valueOf(sharedFile.getFileSize()));
+        if (metadata.getFileSize() != null) {
+            headers.add(HttpHeaders.CONTENT_LENGTH, String.valueOf(metadata.getFileSize()));
         }
 
-        log.info("Streaming file: id={}, name={}, type={}", sharedFile.getId(),
-            sharedFile.getOriginalFileName(), contentType);
+        log.info("Streaming file: id={}, name={}, type={}", metadata.getId(),
+            metadata.getOriginalFileName(), contentType);
 
         return ResponseEntity.ok()
             .headers(headers)
             .body(resource);
     }
 
-    /**
-     * Convenience redirect endpoint: /share/{token} → /api/files/share/{token}
-     * Allows short QR URLs if the frontend uses /share/... paths.
-     */
     @GetMapping("/share/{token}")
     @Operation(summary = "Redirect short share URL to the API file streaming endpoint")
     public ResponseEntity<Void> redirectToFileEndpoint(@PathVariable String token) {
@@ -84,7 +76,6 @@ public class ShareController {
 
     private String sanitizeFilename(String filename) {
         if (filename == null) return "download";
-        // Remove path traversal characters and quotes
         return filename.replaceAll("[/\\\\\"']", "_");
     }
 }
