@@ -31,9 +31,6 @@ public class FileMetadataResponse {
     @Schema(description = "Shareable URL for the file")
     private String shareUrl;
 
-    @Schema(description = "Base64-encoded PNG QR code as a data URL for the share URL")
-    private String qrCode;
-
     @Schema(description = "Timestamp when the file was uploaded")
     private Instant createdAt;
 

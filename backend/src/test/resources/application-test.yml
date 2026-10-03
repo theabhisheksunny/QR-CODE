@@ -3,7 +3,6 @@ spring:
     name: qr-share-test
 
 app:
-  base-url: http://localhost:8787
   storage:
     path: ./target/test-files
   metadata-storage-path: ./target/test-metadata

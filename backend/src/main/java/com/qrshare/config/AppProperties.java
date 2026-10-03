@@ -7,7 +7,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "app")
 public class AppProperties {
 
-    private String baseUrl = "http://localhost:8787";
     private int serverPort = 8787;
     private Storage storage = new Storage();
     private String metadataStoragePath = "./storage/metadata";

@@ -1,7 +1,6 @@
 package com.qrshare.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.net.*;
@@ -11,9 +10,6 @@ import java.util.concurrent.atomic.AtomicReference;
 @Service
 @Slf4j
 public class NetworkService {
-
-    @Value("${server.port:8787}")
-    private int serverPort;
 
     private final AtomicReference<String> ipOverride = new AtomicReference<>(null);
 
@@ -99,13 +95,6 @@ public class NetworkService {
             log.warn("Could not enumerate network interfaces: {}", e.getMessage());
         }
         return result;
-    }
-
-    /**
-     * Returns the base URL used in generated share links (e.g. http://192.168.1.25:8787).
-     */
-    public String getShareBaseUrl() {
-        return "http://" + getLocalIpAddress() + ":" + serverPort;
     }
 
     /**

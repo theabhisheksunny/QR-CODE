@@ -42,26 +42,4 @@ class TokenUtilTest {
         assertThat(tokens).hasSize(1000);
     }
 
-    @Test
-    void testHashTokenConsistency() {
-        String token = "test-token-abc-123";
-        String hash1 = tokenUtil.hashToken(token);
-        String hash2 = tokenUtil.hashToken(token);
-        assertThat(hash1).isEqualTo(hash2);
-    }
-
-    @Test
-    void testHashTokenDifference() {
-        String hash1 = tokenUtil.hashToken("tokenAlpha");
-        String hash2 = tokenUtil.hashToken("tokenBeta");
-        assertThat(hash1).isNotEqualTo(hash2);
-    }
-
-    @Test
-    void testHashTokenIsHex() {
-        String token = tokenUtil.generateToken();
-        String hash = tokenUtil.hashToken(token);
-        // SHA-256 produces a 64-character lowercase hex string
-        assertThat(hash).hasSize(64).matches("[0-9a-f]+");
-    }
 }

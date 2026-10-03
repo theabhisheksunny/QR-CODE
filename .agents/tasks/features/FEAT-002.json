@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "refactor",
   "description": "Remove backend Java dead code (AppProperties.baseUrl, TokenUtil.hashToken, NetworkService.getShareBaseUrl() no-args overload + serverPort @Value field, FileShareService.getFileByToken, FileMetadataResponse.qrCode field), remove corresponding YAML config keys and test methods, fix backend Dockerfile (Java 17->21, port 8080->8787, storage path). FEAT-002 is independent of FEAT-001 (different files) but should run after FEAT-001 for a clean working tree.",
-  "status": "pending",
+  "status": "completed",
   "steps": [
     "Read backend/src/main/java/com/qrshare/config/AppProperties.java before editing. Remove the 'private String baseUrl = \"http://localhost:8787\";' field and its getter (Lombok generates it, so just remove the field declaration). The field is bound from app.base-url YAML but never read by any service — NetworkService replaced it.",
     "Read backend/src/main/resources/application.yml before editing. Remove the 'app.base-url: ${APP_BASE_URL:http://localhost:8787}' line.",
@@ -36,5 +36,5 @@
     "grep -r 'baseUrl' backend/src/main/java/com/qrshare/config/AppProperties.java should return no matches"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All dead code removed and Dockerfile fixed. Changes: (1) AppProperties.java - removed baseUrl field (serverPort field kept, still used by FileShareService.buildShareUrl via getServerPort()). (2) application.yml and application-test.yml - removed app.base-url line. (3) TokenUtil.java - removed hashToken() method; also removed now-unused imports MessageDigest and NoSuchAlgorithmException (SecureRandom/Base64 kept). (4) TokenUtilTest.java - removed 3 hashToken tests; 3 generate* tests remain. (5) NetworkService.java - removed no-args getShareBaseUrl() and @Value serverPort field; removed now-unused org.springframework.beans.factory.annotation.Value import; getShareBaseUrl(int port) kept. (6) FileShareService.java - removed getFileByToken() method (confirmed no controller references). (7) FileShareServiceTest.java - removed testGetFileByToken_expired(); removed now-unused FileExpiredException import. (8) FileMetadataResponse.java - removed qrCode field and its @Schema annotation. (9) Dockerfile - Java 17->21 (builder and runtime), EXPOSE 8080->8787, mkdir now creates /app/storage/files and /app/storage/metadata, added ENV FILE_STORAGE_PATH/METADATA_STORAGE_PATH before ENTRYPOINT. Verification: 'mvn test' exits 0 with all remaining tests passing. grep for hashToken/getFileByToken/getShareBaseUrl()/baseUrl in main java returns no matches; getShareBaseUrl(int port) still present as expected."
 }

@@ -101,14 +101,6 @@ public class FileShareService {
         return mapToMetadataResponse(metadata, null);
     }
 
-    public FileMetadataResponse getFileByToken(String rawToken) {
-        SharedFileMetadata metadata = resolveAndValidateToken(rawToken);
-        metadata.setDownloadCount(metadata.getDownloadCount() + 1);
-        metadataStorageService.save(metadata);
-        String shareUrl = buildShareUrl(rawToken);
-        return mapToMetadataResponse(metadata, shareUrl);
-    }
-
     public FileMetadataResponse getFileMetadataByToken(String rawToken) {
         SharedFileMetadata metadata = resolveAndValidateToken(rawToken);
         String shareUrl = buildShareUrl(rawToken);

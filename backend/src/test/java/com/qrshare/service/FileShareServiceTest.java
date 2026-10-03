@@ -2,7 +2,6 @@ package com.qrshare.service;
 
 import com.qrshare.config.AppProperties;
 import com.qrshare.dto.FileUploadResponse;
-import com.qrshare.exception.FileExpiredException;
 import com.qrshare.exception.FileNotFoundException;
 import com.qrshare.exception.FileTooLargeException;
 import com.qrshare.storage.MetadataStorageService;
@@ -138,29 +137,6 @@ class FileShareServiceTest {
 
         assertThatThrownBy(() -> fileShareService.getFileMetadata(randomId))
                 .isInstanceOf(FileNotFoundException.class);
-    }
-
-    // -------------------------------------------------------------------------
-    // getFileByToken — expired
-    // -------------------------------------------------------------------------
-
-    @Test
-    void testGetFileByToken_expired() {
-        SharedFileMetadata expiredMetadata = SharedFileMetadata.builder()
-                .id(FILE_ID)
-                .token(RAW_TOKEN)
-                .originalFileName("old.txt")
-                .storageKey("key-123")
-                .createdAt(Instant.now().minusSeconds(7200))
-                .expiresAt(Instant.now().minusSeconds(3600)) // already expired
-                .downloadCount(0)
-                .status("ACTIVE")
-                .build();
-
-        when(metadataStorageService.findByToken(RAW_TOKEN)).thenReturn(Optional.of(expiredMetadata));
-
-        assertThatThrownBy(() -> fileShareService.getFileByToken(RAW_TOKEN))
-                .isInstanceOf(FileExpiredException.class);
     }
 
     // -------------------------------------------------------------------------
