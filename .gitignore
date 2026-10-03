@@ -24,6 +24,31 @@ backend/storage/
 .agents/tasks/backend.log
 .agents/tasks/frontend.log
 
+# Generated frontend bundle inside backend (created by start-lan.ps1)
+backend/src/main/resources/static/assets/
+backend/src/main/resources/static/index.html
+
+# Agent task files (keep the directory + planning artifacts)
+.agents/tasks/*.txt
+.agents/tasks/*.json
+.agents/tasks/*.py
+.agents/tasks/*.ps1
+.agents/tasks/*.log
+.agents/tasks/lan-plan.md
+.agents/tasks/lan-review.md
+# Keep planning artifacts
+!.agents/tasks/context.json
+!.agents/tasks/task.json
+!.agents/tasks/features/
+!.agents/tasks/features/*.json
+
+# Generated test report
+test-report.html
+
+# Agent scripts
+.agents/*.ps1
+.agents/*.log
+
 # VS Code
 .vscode/
 

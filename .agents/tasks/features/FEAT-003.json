@@ -1,0 +1,47 @@
+{
+  "id": "FEAT-003",
+  "type": "fix",
+  "description": "Remove unused qrcode npm dependency from frontend, fix nginx.conf proxy port. Fix 5 e2e specs that depend on deleted services-status.json agent file. Fix 03-file-upload.spec.ts wrong shareUrl assertion. Fix port 8080 hardcoded in 07-security.spec.ts, demo-live.spec.ts, e2e/demo/live-demo.ts. Fix port 8080 in README.md (13+ occurrences). Create CONTRIBUTING.md. FEAT-003 is independent of FEAT-002 (different files) but should run after FEAT-001 to ensure services-status.json is already gone.",
+  "status": "pending",
+  "steps": [
+    "Read frontend/package.json before editing. Remove '\"qrcode\": \"^1.5.3\"' from dependencies and '\"@types/qrcode\": \"^1.5.5\"' from devDependencies. Then run: cd d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\frontend && npm install to regenerate package-lock.json.",
+    "Read frontend/nginx.conf before editing. Change 'proxy_pass http://backend:8080;' to 'proxy_pass http://backend:8787;'.",
+    "Read e2e/tests/01-homepage.spec.ts before editing. Remove the module-level services-status.json reading (lines: 'const statusPath = ...', 'const status = JSON.parse(...)', 'const BASE_URL = status.frontendUrl ...'). Replace BASE_URL with: 'const BASE_URL = process.env.BASE_URL || \"http://localhost:5173\";'. Remove the 'import * as fs from \"fs\"' and 'import * as path from \"path\"' imports since they were only used for reading services-status.json (check: path is also used for resultsDir — keep path if it is still used). Keep 'import * as path from \"path\"' if the test still uses path.join for the resultsDir.",
+    "Read e2e/tests/10-responsive.spec.ts before editing. Apply same fix as step 3: replace module-level statusPath/status/BASE_URL block with 'const BASE_URL = process.env.BASE_URL || \"http://localhost:5173\";'. Check: does this file use fs or path for anything other than services-status.json? Keep relevant imports.",
+    "Read e2e/tests/02-text-qr.spec.ts before editing. The services-status.json reading is inside a test function, not at module level. Inside test '02 - UI: text QR page loads and generates QR': remove the statusPath/status block, replace with 'const BASE_URL = process.env.BASE_URL || \"http://localhost:5173\";'.",
+    "Read e2e/tests/03-file-upload.spec.ts before editing. (a) Inside test '03 - upload test-small.txt': remove statusPath/status block, replace with 'const FRONTEND_URL = process.env.BASE_URL || \"http://localhost:5173\";'. (b) Inside test '03 - upload screenshot': same replacement. (c) Fix the wrong shareUrl assertion: change 'expect(data.shareUrl).toMatch(/\\/api\\/files\\/share\\//)' to 'expect(data.shareUrl).toMatch(/\\/share\\/[A-Za-z0-9_-]+$/)' and add 'expect(data.shareUrl).not.toContain(\"/api/files/share/\")'. (d) Fix the download URL: the fetchBuffer call uses data.shareUrl directly, but shareUrl is now the SPA route (http://...8787/share/token), not the download endpoint. Replace: 'const downloadedBuf = await fetchBuffer(data.shareUrl)' with: 'const token = data.shareUrl.split(\"/share/\")[1]; const downloadedBuf = await fetchBuffer(`${API_URL}/api/files/share/${token}`)'.",
+    "Read e2e/tests/11-golden-e2e.spec.ts before editing. The statusPath block is inside the test function. Remove statusPath/status/FRONTEND_URL block. Replace with 'const FRONTEND_URL = process.env.BASE_URL || \"http://localhost:5173\";'.",
+    "Read e2e/tests/07-security.spec.ts before editing. In the test '07 - upload without file returns 400 or 500', find the raw http.RequestOptions block. Change 'port: 8080' to 'port: parseInt(new URL(API_URL).port) || 8787'. No import changes needed (http is already imported).",
+    "Read e2e/tests/demo-live.spec.ts before editing. Change 'const API_URL = \"http://localhost:8080\";' to 'const API_URL = process.env.API_URL || \"http://localhost:8787\";'. In the uploadViaApi function, the hardcoded 'port: 8080' and 'hostname: \"localhost\"' must also be replaced — change to use URL parsing: 'const urlObj = new URL(`${API_URL}/api/files?expirationMinutes=${expirationMinutes}`); const options = { hostname: urlObj.hostname, port: parseInt(urlObj.port) || 8787, path: urlObj.pathname + urlObj.search, ... }'. In deleteFile function, same: replace '{ hostname: \"localhost\", port: 8080, path: `/api/files/${id}`, method: \"DELETE\" }' with URL-parsed form using API_URL.",
+    "Read e2e/demo/live-demo.ts before editing. Change 'const API_URL = \"http://localhost:8080\";' to 'const API_URL = process.env.API_URL || \"http://localhost:8787\";'. Change the final console.log that contains the hardcoded absolute path 'd:\\\\PROJECT-FINAL\\\\Kiro\\\\QR-CODE\\\\backend\\\\storage\\\\' to './backend/storage/'.",
+    "Read README.md before editing. Make all port 8080 → 8787 replacements listed in cleanup-plan.md Phase F-3 (13+ occurrences). Also fix the shareUrl example in API Reference: change '/api/files/share/' to '/share/' and port 8080 to 8787. Fix LAN Mode section. Fix project structure — replace 'model/' with 'storage/ # Plain Java POJOs (no ORM)'.",
+    "Create CONTRIBUTING.md at root. Content: prerequisites (Java 21, Maven 3.9+, Node.js 18+), dev mode (start-dev.ps1), LAN mode (start-lan.ps1), backend tests (cd backend && mvn test), e2e tests (cd e2e && npx playwright test), brief code conventions, how to extend storage backend.",
+    "Run: cd d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\frontend && npm run build — must exit 0 with no TypeScript errors.",
+    "Run: cd d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\frontend && npm run lint — must exit 0 with 0 errors.",
+    "Run: cd d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\e2e && npx tsc --noEmit — must compile without errors."
+  ],
+  "acceptance_criteria": [
+    "frontend/package.json has no qrcode or @types/qrcode entries",
+    "frontend/nginx.conf proxies to backend:8787",
+    "e2e/tests/01-homepage.spec.ts, 02-text-qr.spec.ts, 03-file-upload.spec.ts, 10-responsive.spec.ts, 11-golden-e2e.spec.ts contain no reference to services-status.json",
+    "e2e/tests/03-file-upload.spec.ts shareUrl assertion uses /share/[A-Za-z0-9_-]+ pattern and download uses API_URL",
+    "e2e/tests/07-security.spec.ts has no hardcoded port 8080",
+    "e2e/tests/demo-live.spec.ts has no hardcoded port 8080 and uses process.env.API_URL",
+    "e2e/demo/live-demo.ts has no hardcoded port 8080 and no hardcoded absolute Windows path",
+    "README.md contains no occurrence of port 8080",
+    "CONTRIBUTING.md exists at repository root",
+    "cd frontend && npm run build exits 0",
+    "cd frontend && npm run lint exits 0",
+    "cd e2e && npx tsc --noEmit exits 0"
+  ],
+  "verification": [
+    "cd d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\frontend && npm run build",
+    "cd d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\frontend && npm run lint",
+    "cd d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\e2e && npx tsc --noEmit",
+    "Select-String -Path d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\README.md -Pattern '8080' | Should return no matches",
+    "Select-String -Path d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\e2e\\tests\\03-file-upload.spec.ts -Pattern 'services-status' | Should return no matches",
+    "Test-Path d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\CONTRIBUTING.md | Should be True"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

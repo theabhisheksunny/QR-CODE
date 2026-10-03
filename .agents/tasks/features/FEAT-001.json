@@ -1,0 +1,36 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Delete all agent artifacts, obsolete generated files, and dead migration SQL. Update .gitignore to prevent recurrence. Fix .env.example (remove PostgreSQL vars, fix defaults). Rewrite docker-compose.yml (remove PostgreSQL service, fix ports). Create backend/src/main/resources/static/.gitkeep. These are pure file operations — no source code changes, no build risk.",
+  "status": "completed",
+  "steps": [
+    "Delete backend/src/main/resources/db/migration/V1__create_shared_files.sql (obsolete PostgreSQL DDL, Flyway not in pom.xml). Then delete the now-empty backend/src/main/resources/db/ directory tree.",
+    "Delete FINAL-REPORT.md, e2e/TEST-SUMMARY.md, test-report.html — internal agent artifacts with hardcoded absolute paths and stale port 8080 references.",
+    "Delete all agent work files under .agents/ and .agents/tasks/ EXCEPT .agents/tasks/audit-inventory.md, .agents/tasks/cleanup-plan.md, .agents/tasks/task.json, .agents/tasks/context.json, and .agents/tasks/features/. Full list in cleanup-plan.md Phase A-3.",
+    "Delete generated frontend bundle files: backend/src/main/resources/static/index.html, backend/src/main/resources/static/assets/ (all files). Then create backend/src/main/resources/static/.gitkeep to preserve the empty directory for git.",
+    "Update root .gitignore — add entries from cleanup-plan.md Phase B-1: backend/src/main/resources/static/assets/, backend/src/main/resources/static/index.html, .agents/tasks/*.txt, .agents/tasks/*.json (with exception pattern for keep files), test-report.html, .agents/*.ps1, .agents/*.log.",
+    "Update e2e/.gitignore — add 'package-lock.json' line.",
+    "Rewrite .env.example to remove DATABASE_URL/USERNAME/PASSWORD (PostgreSQL removed), fix FILE_STORAGE_PATH from ./temp-files to ./storage/files, add METADATA_STORAGE_PATH=./storage/metadata. Use the exact content from cleanup-plan.md Phase F-1.",
+    "Rewrite docker-compose.yml to remove the postgres service and postgres_data volume, fix port from 8080:8080 to 8787:8787, fix environment variables (remove DATABASE_* vars, add SERVER_PORT=8787, fix FILE_STORAGE_PATH). Use the exact content from cleanup-plan.md Phase F-2.",
+    "Verify: cd backend && mvn compile -q exits 0. Also verify: Get-ChildItem .agents/tasks/ lists only the expected planning files."
+  ],
+  "acceptance_criteria": [
+    "backend/src/main/resources/db/migration/ directory does not exist",
+    "FINAL-REPORT.md, e2e/TEST-SUMMARY.md, test-report.html do not exist",
+    "All .agents/tasks/*.txt, *.json (except planning artifacts), *.py, *.ps1 files do not exist",
+    "backend/src/main/resources/static/ contains only .gitkeep",
+    ".gitignore contains entries for static/assets/, static/index.html, and agent task artifacts",
+    ".env.example contains no reference to DATABASE_URL, DATABASE_USERNAME, or DATABASE_PASSWORD",
+    "docker-compose.yml contains no postgres service and uses port 8787",
+    "cd backend && mvn compile -q exits 0 (file deletions did not break compilation)"
+  ],
+  "verification": [
+    "cd d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\backend && mvn compile -q",
+    "Test-Path d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\backend\\src\\main\\resources\\db | Should be False",
+    "Test-Path d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\FINAL-REPORT.md | Should be False",
+    "Get-Content d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\.env.example | Select-String 'DATABASE' | Should be empty",
+    "Get-Content d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\docker-compose.yml | Select-String 'postgres' | Should be empty"
+  ],
+  "blocked_reason": null,
+  "findings": "All steps completed. Deleted backend/src/main/resources/db/ tree (V1 Flyway SQL), FINAL-REPORT.md, e2e/TEST-SUMMARY.md, test-report.html, 33 agent work files under .agents/, and the generated static bundle (index.html + assets/). Created backend/src/main/resources/static/.gitkeep. Updated root .gitignore (static bundle, agent task artifacts with negation patterns for context.json/task.json/features/*.json, test-report.html, agent scripts/logs) and e2e/.gitignore (package-lock.json). Rewrote .env.example (removed DATABASE_* PostgreSQL vars, FILE_STORAGE_PATH ./temp-files -> ./storage/files, added METADATA_STORAGE_PATH, SERVER_PORT=8787, ALLOWED_ORIGINS=*). Rewrote docker-compose.yml (removed postgres service + postgres_data volume, ports 8080->8787, removed DATABASE_* env, added SERVER_PORT/METADATA_STORAGE_PATH, app_storage volume). Verification: 'mvn compile -q' exits 0; db dir absent; report files absent; static/ contains only .gitkeep; .env.example DATABASE matches=0; docker-compose postgres matches=0; port 8787 present. gitignore rules confirmed via 'git check-ignore --no-index' (generated/agent files matched; keep files excluded by negation). Note: e2e/package-lock.json remains tracked in git index per minimal-change scope; the new ignore rule prevents future drift as planned. git check-ignore without --no-index reports tracked files as not-ignored, which is expected."
+}

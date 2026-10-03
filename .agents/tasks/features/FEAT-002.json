@@ -1,0 +1,40 @@
+{
+  "id": "FEAT-002",
+  "type": "refactor",
+  "description": "Remove backend Java dead code (AppProperties.baseUrl, TokenUtil.hashToken, NetworkService.getShareBaseUrl() no-args overload + serverPort @Value field, FileShareService.getFileByToken, FileMetadataResponse.qrCode field), remove corresponding YAML config keys and test methods, fix backend Dockerfile (Java 17->21, port 8080->8787, storage path). FEAT-002 is independent of FEAT-001 (different files) but should run after FEAT-001 for a clean working tree.",
+  "status": "pending",
+  "steps": [
+    "Read backend/src/main/java/com/qrshare/config/AppProperties.java before editing. Remove the 'private String baseUrl = \"http://localhost:8787\";' field and its getter (Lombok generates it, so just remove the field declaration). The field is bound from app.base-url YAML but never read by any service — NetworkService replaced it.",
+    "Read backend/src/main/resources/application.yml before editing. Remove the 'app.base-url: ${APP_BASE_URL:http://localhost:8787}' line.",
+    "Read backend/src/test/resources/application-test.yml before editing. Remove the 'app.base-url: http://localhost:8787' line (if present).",
+    "Read backend/src/main/java/com/qrshare/util/TokenUtil.java before editing. Remove the hashToken(String token) method and its Javadoc block (lines starting with '/**' down through the closing '}' of hashToken). Keep generateToken() and the SECURE_RANDOM field.",
+    "Read backend/src/test/java/com/qrshare/util/TokenUtilTest.java before editing. Remove the three test methods: testHashTokenConsistency(), testHashTokenDifference(), and testHashTokenIsHex(). Keep testGenerateTokenNotNull(), testGenerateTokenLength(), testGenerateTokenUniqueness().",
+    "Read backend/src/main/java/com/qrshare/service/NetworkService.java before editing. Remove the getShareBaseUrl() no-args method (the one that returns 'http://' + getLocalIpAddress() + ':' + serverPort). Also remove the '@Value(\"${server.port:8787}\") private int serverPort;' field since it is only used by that method. Keep getShareBaseUrl(int port) intact.",
+    "Read backend/src/main/java/com/qrshare/service/FileShareService.java before editing. Remove the public method getFileByToken(String rawToken) and its body. Verify no controller calls this method (confirmed: none do).",
+    "Read backend/src/test/java/com/qrshare/service/FileShareServiceTest.java before editing. Remove the testGetFileByToken_expired() test method since it tests the now-deleted getFileByToken method.",
+    "Read backend/src/main/java/com/qrshare/dto/FileMetadataResponse.java before editing. Remove the 'private String qrCode;' field and its @Schema annotation. This field is always null — mapToMetadataResponse() never sets it.",
+    "Read backend/Dockerfile before editing. Change: 'FROM maven:3.9-eclipse-temurin-17 AS builder' to 'FROM maven:3.9-eclipse-temurin-21 AS builder'. Change: 'FROM eclipse-temurin:17-jre' to 'FROM eclipse-temurin:21-jre'. Change: 'EXPOSE 8080' to 'EXPOSE 8787'. Change: 'RUN mkdir -p /data/temp-files' to 'RUN mkdir -p /app/storage/files /app/storage/metadata'. Add 'ENV FILE_STORAGE_PATH=/app/storage/files METADATA_STORAGE_PATH=/app/storage/metadata' before the ENTRYPOINT line.",
+    "Run: cd d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\backend && mvn test — all remaining tests must pass."
+  ],
+  "acceptance_criteria": [
+    "AppProperties.java has no baseUrl field",
+    "application.yml has no app.base-url line",
+    "TokenUtil.java has no hashToken method",
+    "TokenUtilTest.java has exactly 3 test methods (generate variants only)",
+    "NetworkService.java has no getShareBaseUrl() no-args overload and no @Value serverPort field",
+    "FileShareService.java has no getFileByToken method",
+    "FileShareServiceTest.java has no testGetFileByToken_expired test",
+    "FileMetadataResponse.java has no qrCode field",
+    "backend/Dockerfile uses eclipse-temurin:21, exposes 8787, sets correct storage paths",
+    "cd backend && mvn test exits 0 with all remaining tests passing"
+  ],
+  "verification": [
+    "cd d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\backend && mvn test",
+    "grep -r 'hashToken' backend/src/main/java/ should return no matches",
+    "grep -r 'getFileByToken' backend/src/main/java/ should return no matches",
+    "grep -r 'getShareBaseUrl()' backend/src/main/java/ should return no matches (getShareBaseUrl(int port) is still present and expected)",
+    "grep -r 'baseUrl' backend/src/main/java/com/qrshare/config/AppProperties.java should return no matches"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

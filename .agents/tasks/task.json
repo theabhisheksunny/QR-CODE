@@ -1,0 +1,7 @@
+{
+  "task_id": "task-deep-cleanup",
+  "task_description": "Complete deep cleanup of Universal QR Local Network Sharing app: delete agent artifacts and dead files, remove dead Java code, fix stale configs, eliminate unused npm dependency, fix broken e2e tests, and overhaul documentation.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}
