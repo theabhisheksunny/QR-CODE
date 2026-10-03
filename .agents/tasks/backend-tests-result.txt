@@ -1,0 +1,85 @@
+# Backend Test Suite Results
+
+## Summary
+
+Tests run: 31 | Failures: 0 | Errors: 0 | Skipped: 0
+
+BUILD SUCCESS
+
+## Test Files Written
+
+### 1. util/TokenUtilTest.java (6 tests — PASS)
+- testGenerateTokenNotNull
+- testGenerateTokenLength
+- testGenerateTokenUniqueness
+- testHashTokenConsistency
+- testHashTokenDifference
+- testHashTokenIsHex
+
+### 2. service/QrCodeServiceTest.java (9 tests — PASS)
+- testGenerateQrCodeForText
+- testGenerateQrCodeForUrl
+- testGenerateQrCodeForJson
+- testGenerateQrCodeForNumber
+- testDetectTypeUrl
+- testDetectTypeUrlHttp
+- testDetectTypeJson
+- testDetectTypeNumber
+- testDetectTypeText
+
+### 3. service/FileShareServiceTest.java (5 tests — PASS)
+- testUploadFile_success
+- testUploadFile_fileTooLarge
+- testGetFileMetadata_notFound
+- testGetFileByToken_expired
+- testDeleteFile_success
+
+### 4. service/CleanupServiceTest.java (3 tests — PASS)
+- testCleanup_deletesExpiredFiles
+- testCleanup_noExpiredFiles
+- testCleanup_gracefulIfFileNotExists
+
+### 5. controller/FileControllerIntegrationTest.java (5 tests — PASS)
+- testUploadFile_success
+- testUploadFile_noFile
+- testGetMetadata_notFound
+- testDeleteFile_notFound
+- testGetShareMetadata_invalidToken
+
+### 6. controller/ShareControllerIntegrationTest.java (3 tests — PASS)
+- testShareFile_invalidToken
+- testShareFileMetadata_invalidToken
+- testStreamFile_afterUpload_returnsCorrectContentType
+
+## Issues Fixed During Test Development
+
+### Java 25 Compatibility
+- Environment uses Java 25 (OpenJDK Temurin 25.0.4.1)
+- Spring Boot 3.2.0 bundles Lombok 1.18.30 which fails on Java 25
+- Fix: overrode lombok.version=1.18.38 in pom.xml
+- Mockito Byte Buddy 1.14.x doesn't officially support Java 25
+- Fix: added -Dnet.bytebuddy.experimental=true to maven-surefire-plugin argLine
+
+### GlobalExceptionHandler improvements
+- POST /api/files with no file part throws MissingServletRequestPartException (not
+  MissingServletRequestParameterException) — was being swallowed by the generic 500 handler
+- Fix: added @ExceptionHandler for MissingServletRequestPartException → 400
+- Also added @ExceptionHandler for IllegalArgumentException → 400
+- Also added @ExceptionHandler for MissingServletRequestParameterException → 400
+
+### FileShareServiceTest strictness
+- Mockito's STRICT_STUBS (default) rejects unnecessary stubbings per-test
+- Fix: applied @MockitoSettings(strictness = Strictness.LENIENT) at class level
+  and moved stubs into each individual test method to keep them precise
+
+### CleanupServiceTest
+- The doThrow() for fileStorageService.delete("key-missing") caused a
+  PotentialStubbingProblem for calls to other keys under STRICT mode
+- The lenient mode on CleanupServiceTest is not set; the test passes because the
+  CleanupService catches all exceptions gracefully — the stub fires correctly
+
+## Test Infrastructure Used
+- H2 in-memory database (application-test.yml profile)
+- Local file storage: ./target/test-temp-files
+- Flyway disabled for tests (ddl-auto: create-drop)
+- @SpringBootTest(webEnvironment = RANDOM_PORT) + @AutoConfigureMockMvc for integration tests

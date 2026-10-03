@@ -1,0 +1,26 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "MEDIUM",
+      "item": "Golden-path ran against port 8080, not 8787",
+      "detail": "golden-path-result.txt shows Backend: http://localhost:8080. The LAN port is 8787. The /api/network/info endpoint returning a non-localhost IP was never verified against the actual runtime port. Re-run the golden path against http://localhost:8787 and record the result."
+    },
+    {
+      "severity": "MEDIUM",
+      "item": "TypeScript check predates LAN frontend additions",
+      "detail": "frontend-ts-result.txt does not list src/api/network.ts, NetworkStatusBar.tsx, or the updated types/index.ts. The tsc --noEmit run predates those files. A fresh check should be run and recorded to confirm no type errors in the new LAN surface."
+    },
+    {
+      "severity": "LOW",
+      "item": "CORS gap on /share/** streaming path",
+      "detail": "CorsConfig maps allowedOriginPatterns to /api/** only. File streaming (ShareController) is at /api/files/share/{token} which is covered. If any future cross-origin page issues a fetch against a path outside /api/**, CORS headers will be absent. Low risk today; worth noting for future expansion."
+    },
+    {
+      "severity": "LOW",
+      "item": "IP override is session-scoped and not persisted",
+      "detail": "NetworkService.setIpOverride stores the selection in an AtomicReference. A backend restart resets it to auto-detect. The UI gives no indication that the selection is ephemeral. Documented in LAN-REPORT.md as a known limitation."
+    }
+  ],
+  "reviewDoc": "d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\.agents\\tasks\\lan-review.md"
+}

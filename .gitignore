@@ -1,0 +1,39 @@
+# Maven build output
+backend/target/
+
+# Frontend build output & dependencies
+frontend/dist/
+frontend/node_modules/
+frontend/package-lock.json
+
+# E2E test artifacts & dependencies
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
+e2e/demo/dist/
+e2e/demo/screenshots/
+
+# Storage (uploaded files & metadata - runtime data)
+storage/
+backend/storage/
+
+# Logs
+*.log
+.agents/backend.log
+.agents/frontend.log
+.agents/tasks/backend.log
+.agents/tasks/frontend.log
+
+# VS Code
+.vscode/
+
+# Nested repo (not part of this project)
+QR-CODE/
+
+# Environment secrets
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
