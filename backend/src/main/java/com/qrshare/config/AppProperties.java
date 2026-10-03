@@ -7,13 +7,14 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "app")
 public class AppProperties {
 
-    private String baseUrl = "http://localhost:8080";
+    private String baseUrl = "http://localhost:8787";
+    private int serverPort = 8787;
     private Storage storage = new Storage();
     private String metadataStoragePath = "./storage/metadata";
     private int defaultExpirationMinutes = 30;
     private int maxFileSizeMb = 25;
     private long cleanupIntervalMs = 60000L;
-    private String allowedOrigins = "http://localhost:5173";
+    private String allowedOrigins = "*";
 
     @Data
     public static class Storage {

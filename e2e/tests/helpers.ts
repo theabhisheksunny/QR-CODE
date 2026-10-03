@@ -5,7 +5,7 @@ import * as http from 'http';
 import * as https from 'https';
 
 export const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
-export const API_URL = process.env.API_URL || 'http://localhost:8080';
+export const API_URL = process.env.API_URL || 'http://localhost:8787';
 export const TEST_FILES_DIR = path.join(__dirname, '../../test-files');
 
 export function hashFile(filePath: string): string {

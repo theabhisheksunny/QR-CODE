@@ -50,3 +50,17 @@ export type ExpirationOption = {
   label: string;
   minutes: number;
 };
+
+export interface NetworkInterfaceInfo {
+  name: string;
+  displayName: string;
+  ipAddress: string;
+  preferred: boolean;
+}
+
+export interface NetworkInfo {
+  localIp: string;
+  port: number;
+  shareBaseUrl: string;
+  allInterfaces: NetworkInterfaceInfo[];
+}

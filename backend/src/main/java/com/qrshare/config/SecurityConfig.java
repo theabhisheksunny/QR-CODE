@@ -23,8 +23,14 @@ public class SecurityConfig {
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
+                    "/",
+                    "/index.html",
+                    "/assets/**",
+                    "/vite.svg",
+                    "/favicon.ico",
                     "/api/**",
                     "/share/**",
+                    "/text", "/file", "/history", "/settings",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
                     "/v3/api-docs/**",

@@ -80,9 +80,10 @@ class ShareControllerIntegrationTest {
         String uploadBody = uploadResult.getResponse().getContentAsString();
         FileUploadResponse uploadResponse = objectMapper.readValue(uploadBody, FileUploadResponse.class);
 
-        // shareUrl = http://localhost:8080/api/files/share/{rawToken}
+        // shareUrl = http://<LAN-IP>:8787/share/{rawToken}
         String shareUrl = uploadResponse.getShareUrl();
         assertThat(shareUrl).isNotBlank();
+        assertThat(shareUrl).contains("/share/");
 
         // Extract raw token: last path segment of the shareUrl
         String rawToken = shareUrl.substring(shareUrl.lastIndexOf('/') + 1);

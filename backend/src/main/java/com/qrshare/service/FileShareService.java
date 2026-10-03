@@ -31,6 +31,7 @@ public class FileShareService {
     private final QrCodeService qrCodeService;
     private final TokenUtil tokenUtil;
     private final AppProperties appProperties;
+    private final NetworkService networkService;
 
     public FileUploadResponse uploadFile(MultipartFile file, int expirationMinutes) {
         if (file == null || file.isEmpty()) {
@@ -159,7 +160,7 @@ public class FileShareService {
     }
 
     private String buildShareUrl(String rawToken) {
-        return appProperties.getBaseUrl() + "/api/files/share/" + rawToken;
+        return networkService.getShareBaseUrl(appProperties.getServerPort()) + "/share/" + rawToken;
     }
 
     private FileMetadataResponse mapToMetadataResponse(SharedFileMetadata metadata, String shareUrl) {

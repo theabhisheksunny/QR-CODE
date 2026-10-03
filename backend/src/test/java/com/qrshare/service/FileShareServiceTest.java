@@ -28,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -49,6 +50,9 @@ class FileShareServiceTest {
     @Mock
     private AppProperties appProperties;
 
+    @Mock
+    private NetworkService networkService;
+
     @InjectMocks
     private FileShareService fileShareService;
 
@@ -62,7 +66,8 @@ class FileShareServiceTest {
     @Test
     void testUploadFile_success() throws IOException {
         when(appProperties.getMaxFileSizeMb()).thenReturn(25);
-        when(appProperties.getBaseUrl()).thenReturn("http://localhost:8080");
+        when(appProperties.getServerPort()).thenReturn(8787);
+        when(networkService.getShareBaseUrl(anyInt())).thenReturn("http://192.168.1.100:8787");
         when(tokenUtil.generateToken()).thenReturn(RAW_TOKEN);
         when(qrCodeService.generateQrCode(anyString())).thenReturn("data:image/png;base64,QRDATA");
 
@@ -95,6 +100,8 @@ class FileShareServiceTest {
         verify(fileStorageService).store(any(), anyString(), anyString());
         verify(metadataStorageService).save(any(SharedFileMetadata.class));
         assertThat(response.getShareUrl()).isNotBlank();
+        assertThat(response.getShareUrl()).contains("/share/");
+        assertThat(response.getShareUrl()).doesNotContain("/api/files/share/");
         assertThat(response.getQrCode()).startsWith("data:image/png;base64,");
         assertThat(response.getId()).isEqualTo(FILE_ID);
     }

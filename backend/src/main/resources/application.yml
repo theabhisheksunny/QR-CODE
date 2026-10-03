@@ -7,17 +7,19 @@ spring:
       max-request-size: ${MAX_FILE_SIZE_MB:25}MB
 
 server:
-  port: 8080
+  port: ${SERVER_PORT:8787}
+  address: 0.0.0.0
 
 app:
-  base-url: ${APP_BASE_URL:http://localhost:8080}
+  base-url: ${APP_BASE_URL:http://localhost:8787}
+  server-port: ${SERVER_PORT:8787}
   storage:
     path: ${FILE_STORAGE_PATH:./storage/files}
   metadata-storage-path: ${METADATA_STORAGE_PATH:./storage/metadata}
   default-expiration-minutes: ${DEFAULT_EXPIRATION_MINUTES:30}
   max-file-size-mb: ${MAX_FILE_SIZE_MB:25}
   cleanup-interval-ms: ${CLEANUP_INTERVAL_MS:60000}
-  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}
+  allowed-origins: ${ALLOWED_ORIGINS:*}
 
 management:
   endpoints:

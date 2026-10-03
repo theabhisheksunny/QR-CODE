@@ -53,13 +53,6 @@ public class ShareController {
             .body(resource);
     }
 
-    @GetMapping("/share/{token}")
-    @Operation(summary = "Redirect short share URL to the API file streaming endpoint")
-    public ResponseEntity<Void> redirectToFileEndpoint(@PathVariable String token) {
-        return ResponseEntity.status(302)
-            .header(HttpHeaders.LOCATION, "/api/files/share/" + token)
-            .build();
-    }
 
     private String resolveContentDisposition(String contentType, String originalFileName) {
         if (contentType != null && (

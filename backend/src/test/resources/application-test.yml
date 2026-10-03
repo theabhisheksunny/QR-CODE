@@ -3,11 +3,11 @@ spring:
     name: qr-share-test
 
 app:
-  base-url: http://localhost:8080
+  base-url: http://localhost:8787
   storage:
     path: ./target/test-files
   metadata-storage-path: ./target/test-metadata
   default-expiration-minutes: 30
   max-file-size-mb: 25
   cleanup-interval-ms: 60000
-  allowed-origins: http://localhost:5173
+  allowed-origins: "*"
