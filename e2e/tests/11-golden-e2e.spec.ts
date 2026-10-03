@@ -1,5 +1,5 @@
 import { test, expect, BrowserContext, Page } from '@playwright/test';
-import { uploadFileViaApi, fetchBuffer, hashFile, hashBuffer, apiDelete, API_URL, TEST_FILES_DIR } from './helpers';
+import { uploadFileViaApi, fetchBuffer, hashFile, hashBuffer, apiDelete, downloadUrlFromShareUrl, API_URL, TEST_FILES_DIR } from './helpers';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as http from 'http';
@@ -51,8 +51,8 @@ test.describe('Golden Path E2E', () => {
       fullPage: true,
     });
 
-    // === DEVICE B: Download file and compare hash ===
-    const downloadedBuf = await fetchBuffer(data.shareUrl);
+    // === DEVICE B: Download file (from the API endpoint) and compare hash ===
+    const downloadedBuf = await fetchBuffer(downloadUrlFromShareUrl(data.shareUrl));
     expect(downloadedBuf.length).toBeGreaterThan(0);
     const downloadedHash = hashBuffer(downloadedBuf);
     console.log(`Downloaded hash: ${downloadedHash}`);

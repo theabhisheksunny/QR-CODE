@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { uploadFileViaApi, fetchBuffer, hashFile, hashBuffer, TEST_FILES_DIR } from './helpers';
+import { uploadFileViaApi, fetchBuffer, hashFile, hashBuffer, downloadUrlFromShareUrl, TEST_FILES_DIR } from './helpers';
 import * as path from 'path';
 
 test.describe('Concurrent Uploads and Cross-Isolation', () => {
@@ -30,7 +30,7 @@ test.describe('Concurrent Uploads and Cross-Isolation', () => {
     // Each token must point to its own file (hash comparison)
     for (let i = 0; i < files.length; i++) {
       const originalHash = hashFile(files[i].filePath);
-      const downloadedBuf = await fetchBuffer(uploadResults[i].data.shareUrl);
+      const downloadedBuf = await fetchBuffer(downloadUrlFromShareUrl(uploadResults[i].data.shareUrl));
       const downloadedHash = hashBuffer(downloadedBuf);
       expect(downloadedHash).toBe(originalHash);
       console.log(`File ${files[i].name} isolation: PASS`);
@@ -38,7 +38,7 @@ test.describe('Concurrent Uploads and Cross-Isolation', () => {
 
     // Cross-isolation: token B must NOT return file A
     const fileA_hash = hashFile(files[0].filePath);
-    const fileFromTokenB = await fetchBuffer(uploadResults[1].data.shareUrl);
+    const fileFromTokenB = await fetchBuffer(downloadUrlFromShareUrl(uploadResults[1].data.shareUrl));
     const tokenB_hash = hashBuffer(fileFromTokenB);
     expect(tokenB_hash).not.toBe(fileA_hash);
     console.log('Cross-isolation (token B does not return file A): PASS');

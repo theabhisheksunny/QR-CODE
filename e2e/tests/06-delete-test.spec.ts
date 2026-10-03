@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { uploadFileViaApi, fetchBuffer, apiDelete, API_URL, TEST_FILES_DIR } from './helpers';
+import { uploadFileViaApi, fetchBuffer, apiDelete, downloadUrlFromShareUrl, hashFile, hashBuffer, API_URL, TEST_FILES_DIR } from './helpers';
 import * as path from 'path';
 import * as http from 'http';
 
@@ -13,9 +13,10 @@ test.describe('File Delete Test', () => {
     const data = uploadResult.data;
     console.log(`Uploaded for delete test: id=${data.id}, shareUrl=${data.shareUrl}`);
 
-    // Verify accessible before delete
-    const buf = await fetchBuffer(data.shareUrl);
+    // Verify the actual file is accessible before delete (hash must match)
+    const buf = await fetchBuffer(downloadUrlFromShareUrl(data.shareUrl));
     expect(buf.length).toBeGreaterThan(0);
+    expect(hashBuffer(buf)).toBe(hashFile(filePath));
     console.log('Pre-delete access: PASS');
 
     // Delete via API

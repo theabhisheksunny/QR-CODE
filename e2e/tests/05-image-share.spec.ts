@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { uploadFileViaApi, fetchBuffer, hashFile, hashBuffer, TEST_FILES_DIR } from './helpers';
+import { uploadFileViaApi, fetchBuffer, hashFile, hashBuffer, downloadUrlFromShareUrl, TEST_FILES_DIR } from './helpers';
 import * as path from 'path';
 
 test.describe('Image File Share', () => {
@@ -23,7 +23,7 @@ test.describe('Image File Share', () => {
       const token = tokenMatch![1];
       expect(token.length).toBeGreaterThan(15);
 
-      const downloadedBuf = await fetchBuffer(data.shareUrl);
+      const downloadedBuf = await fetchBuffer(downloadUrlFromShareUrl(data.shareUrl));
       expect(downloadedBuf.length).toBe(data.fileSize);
       const downloadedHash = hashBuffer(downloadedBuf);
 

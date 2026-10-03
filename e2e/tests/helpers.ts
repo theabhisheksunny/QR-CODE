@@ -17,6 +17,27 @@ export function hashBuffer(buf: Buffer): string {
   return crypto.createHash('sha256').update(buf).digest('hex');
 }
 
+/**
+ * Extracts the share token from a share URL.
+ * Share URLs look like http://<lan-ip>:8787/share/<token> (a frontend SPA route).
+ */
+export function tokenFromShareUrl(shareUrl: string): string {
+  const match = shareUrl.match(/\/share\/([^/]+)$/);
+  if (!match) throw new Error(`No token found in share URL: ${shareUrl}`);
+  return match[1];
+}
+
+/**
+ * Builds the backend file-streaming URL for a share token.
+ * The share URL (/share/<token>) is the user-facing SPA page that renders the
+ * share view; the actual file bytes are served by the API at
+ * /api/files/share/<token>. Tests must download from the API endpoint, never
+ * from the SPA route (which returns index.html).
+ */
+export function downloadUrlFromShareUrl(shareUrl: string): string {
+  return `${API_URL}/api/files/share/${tokenFromShareUrl(shareUrl)}`;
+}
+
 export async function fetchBuffer(url: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const client = url.startsWith('https') ? https : http;

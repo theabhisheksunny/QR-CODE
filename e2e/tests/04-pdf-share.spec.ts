@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { uploadFileViaApi, fetchBuffer, hashFile, hashBuffer, TEST_FILES_DIR } from './helpers';
+import { uploadFileViaApi, fetchBuffer, hashFile, hashBuffer, downloadUrlFromShareUrl, TEST_FILES_DIR } from './helpers';
 import * as path from 'path';
 
 test.describe('PDF File Share', () => {
@@ -23,8 +23,8 @@ test.describe('PDF File Share', () => {
     const token = tokenMatch![1];
     expect(token.length).toBeGreaterThan(15);
 
-    // Download and compare
-    const downloadedBuf = await fetchBuffer(data.shareUrl);
+    // Download from the API file-streaming endpoint and compare
+    const downloadedBuf = await fetchBuffer(downloadUrlFromShareUrl(data.shareUrl));
     const downloadedHash = hashBuffer(downloadedBuf);
 
     console.log(`Downloaded PDF hash: ${downloadedHash}`);
