@@ -9,8 +9,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 
-const BASE_URL = 'http://localhost:5173';
-const API_URL  = 'http://localhost:8080';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
+const API_URL  = process.env.API_URL || 'http://localhost:8787';
 const SCREENSHOTS = path.join(__dirname, 'screenshots');
 const TEST_FILES  = path.join(__dirname, '../../test-files');
 
@@ -410,8 +410,8 @@ async function waitReady(page: Page, url: string, label: string) {
 
   console.log('\n  🎉  Application is fully operational!');
   console.log(`      Frontend : http://localhost:5173`);
-  console.log(`      Backend  : http://localhost:8080`);
-  console.log(`      Storage  : d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\backend\\storage\\`);
+  console.log(`      Backend  : ${API_URL}`);
+  console.log(`      Storage  : ./backend/storage/`);
 
   // Keep browser open for 8 seconds so user can see it
   await pageA.waitForTimeout(8000);

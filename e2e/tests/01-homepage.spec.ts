@@ -2,9 +2,7 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const statusPath = path.join(__dirname, '../../.agents/tasks/services-status.json');
-const status = JSON.parse(fs.readFileSync(statusPath, 'utf-8'));
-const BASE_URL = status.frontendUrl || 'http://localhost:5173';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
 
 test.describe('Homepage', () => {
   test('01 - homepage loads and has required UI', async ({ page }) => {

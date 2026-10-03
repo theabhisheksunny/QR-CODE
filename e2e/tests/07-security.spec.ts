@@ -67,7 +67,7 @@ test.describe('Security Tests', () => {
       const body = `--${boundary}\r\nContent-Disposition: form-data; name="expirationMinutes"\r\n\r\n30\r\n--${boundary}--\r\n`;
       const options: http.RequestOptions = {
         hostname: 'localhost',
-        port: 8080,
+        port: parseInt(new URL(API_URL).port) || 8787,
         path: '/api/files',
         method: 'POST',
         headers: {

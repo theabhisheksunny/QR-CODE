@@ -21,7 +21,7 @@ cd backend
 mvn spring-boot:run
 ```
 
-The backend starts at http://localhost:8080  
+The backend starts at http://localhost:8787  
 Files are stored in `./storage/files/` and `./storage/metadata/`
 
 ### 2. Start the frontend
@@ -46,7 +46,7 @@ http://localhost:5173
 |---------------------|---------|-------------|
 | `FILE_STORAGE_PATH` | `./storage/files` | Where uploaded files are stored on disk |
 | `METADATA_STORAGE_PATH` | `./storage/metadata` | Where metadata JSON files are stored |
-| `APP_BASE_URL` | `http://localhost:8080` | Base URL used in share links and QR codes |
+| `APP_BASE_URL` | `http://localhost:8787` | Base URL used in share links and QR codes |
 | `MAX_FILE_SIZE_MB` | `25` | Maximum upload file size in megabytes |
 | `DEFAULT_EXPIRATION_MINUTES` | `30` | Default file expiry time in minutes |
 | `ALLOWED_ORIGINS` | `http://localhost:5173` | CORS allowed origins (comma-separated) |
@@ -124,10 +124,10 @@ Files expire after a configurable duration (default 30 minutes). Expired files a
 │   │  └──────────────────┘   └───────────────────────────┘  │  │
 │   └────────────────────────┬────────────────────────────────┘  │
 └────────────────────────────│────────────────────────────────────┘
-                             │  HTTP / REST  (proxied /api → :8080)
+                             │  HTTP / REST  (proxied /api → :8787)
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                   Spring Boot 3 (port 8080)                     │
+│                   Spring Boot 3 (port 8787)                     │
 │                  No database — no Docker required               │
 │                                                                 │
 │   ┌──────────┐  ┌──────────────────────┐                       │
@@ -172,8 +172,8 @@ docker compose up --build
 | Service     | URL                                    |
 |-------------|----------------------------------------|
 | Frontend    | http://localhost:3000                  |
-| Backend API | http://localhost:8080                  |
-| Swagger UI  | http://localhost:8080/swagger-ui.html  |
+| Backend API | http://localhost:8787                  |
+| Swagger UI  | http://localhost:8787/swagger-ui.html  |
 
 ```bash
 # Stop
@@ -202,7 +202,7 @@ No database installation required.
 ```bash
 cd backend
 mvn spring-boot:run
-# Listening on http://localhost:8080
+# Listening on http://localhost:8787
 ```
 
 The backend reads environment variables (see table above). You can export them in your shell or set them in a `.env` file loaded by your IDE.
@@ -214,7 +214,7 @@ cd frontend
 npm install
 npm run dev
 # Listening on http://localhost:5173
-# /api requests are proxied to http://localhost:8080
+# /api requests are proxied to http://localhost:8787
 ```
 
 ---
@@ -225,7 +225,7 @@ All variables are optional — the defaults work for local development. Set them
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `APP_BASE_URL` | `http://localhost:8080` | Public base URL used when building share links and QR codes |
+| `APP_BASE_URL` | `http://localhost:8787` | Public base URL used when building share links and QR codes |
 | `FILE_STORAGE_PATH` | `./storage/files` | Directory where uploaded files are stored on disk |
 | `METADATA_STORAGE_PATH` | `./storage/metadata` | Directory where metadata JSON files are stored |
 | `DEFAULT_EXPIRATION_MINUTES` | `30` | Default file expiration time in minutes |
@@ -274,7 +274,7 @@ All variables are optional — the defaults work for local development. Set them
   "fileName": "my-document.pdf",
   "fileType": "application/pdf",
   "fileSize": 204800,
-  "shareUrl": "http://localhost:8080/api/files/share/9xK3mP7qL2vN8sQa",
+  "shareUrl": "http://localhost:8787/share/9xK3mP7qL2vN8sQa",
   "expiresAt": "2024-01-15T14:30:00Z",
   "downloadCount": 0
 }
@@ -321,7 +321,7 @@ To share files with other devices on the same Wi-Fi network without deploying to
 
 ```bash
 # .env file or shell export
-APP_BASE_URL=http://192.168.1.42:8080
+APP_BASE_URL=http://192.168.1.42:8787
 ALLOWED_ORIGINS=http://192.168.1.42:3000
 ```
 
@@ -331,9 +331,9 @@ ALLOWED_ORIGINS=http://192.168.1.42:3000
 docker compose up --build
 ```
 
-QR codes will now embed `http://192.168.1.42:8080/api/files/share/{token}` as the share URL. Any phone on the same network that scans the code can open it directly in its browser.
+QR codes will now embed `http://192.168.1.42:8787/share/{token}` as the share URL. Any phone on the same network that scans the code can open it directly in its browser.
 
-> Make sure your firewall allows inbound TCP on ports 8080 and 3000 from your local subnet.
+> Make sure your firewall allows inbound TCP on ports 8787 and 3000 from your local subnet.
 
 ---
 
@@ -346,11 +346,11 @@ QR-CODE/
 │   │   └── com/qrshare/
 │   │       ├── controller/   # REST endpoints
 │   │       ├── service/      # Business logic
-│   │       ├── model/        # Plain Java POJOs (no ORM)
 │   │       ├── dto/          # Request / response objects
 │   │       ├── config/       # CORS, app config, ObjectMapper
 │   │       ├── exception/    # Global error handling
-│   │       ├── storage/      # FileStorageService + LocalImpl
+│   │       ├── storage/      # Plain Java POJOs (no ORM) +
+│   │       │                 # FileStorageService + LocalImpl
 │   │       │                 # MetadataStorageService + LocalImpl
 │   │       └── util/         # Token generation, MIME helpers
 │   └── src/main/resources/
@@ -362,7 +362,7 @@ QR-CODE/
 │   │   ├── hooks/            # Custom React hooks
 │   │   ├── api/              # Axios API client
 │   │   └── types/            # TypeScript interfaces
-│   └── vite.config.ts        # Dev proxy: /api → :8080
+│   └── vite.config.ts        # Dev proxy: /api → :8787
 ├── storage/                  # Runtime data (git-ignored)
 │   ├── files/                # Uploaded file blobs (UUID-named)
 │   └── metadata/             # One JSON file per upload

@@ -14,7 +14,8 @@ test.describe('File Upload and Device B Access', () => {
 
     const data = uploadResult.data;
     expect(data.originalFileName).toBe('test-small.txt');
-    expect(data.shareUrl).toMatch(/\/api\/files\/share\//);
+    expect(data.shareUrl).toMatch(/\/share\/[A-Za-z0-9_-]+$/);
+    expect(data.shareUrl).not.toContain('/api/files/share/');
     expect(data.qrCode).toMatch(/^data:image\/png;base64,/);
     expect(data.expiresAt).toBeTruthy();
     expect(data.fileSize).toBeGreaterThan(0);
@@ -29,8 +30,8 @@ test.describe('File Upload and Device B Access', () => {
 
     console.log(`Uploaded: shareUrl=${data.shareUrl}, token length=${token.length}`);
 
-    // Device B: Download file directly from share URL
-    const downloadedBuf = await fetchBuffer(data.shareUrl);
+    // Device B: Download file via the backend download endpoint
+    const downloadedBuf = await fetchBuffer(`${API_URL}/api/files/share/${token}`);
     expect(downloadedBuf.length).toBeGreaterThan(0);
     const downloadedHash = hashBuffer(downloadedBuf);
 
@@ -44,9 +45,7 @@ test.describe('File Upload and Device B Access', () => {
     expect(metaResult.data.fileSize).toBe(data.fileSize);
 
     // Device B: Browser context test
-    const statusPath = path.join(__dirname, '../../.agents/tasks/services-status.json');
-    const status = JSON.parse(fs.readFileSync(statusPath, 'utf-8'));
-    const FRONTEND_URL = status.frontendUrl || 'http://localhost:5173';
+    const FRONTEND_URL = process.env.BASE_URL || 'http://localhost:5173';
 
     const deviceBContext: BrowserContext = await browser.newContext();
     const deviceBPage = await deviceBContext.newPage();
@@ -77,9 +76,7 @@ test.describe('File Upload and Device B Access', () => {
   });
 
   test('03 - upload screenshot: Device A file upload UI', async ({ page }) => {
-    const statusPath = path.join(__dirname, '../../.agents/tasks/services-status.json');
-    const status = JSON.parse(fs.readFileSync(statusPath, 'utf-8'));
-    const BASE_URL = status.frontendUrl || 'http://localhost:5173';
+    const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
 
     await page.goto(BASE_URL);
     await page.waitForLoadState('networkidle');

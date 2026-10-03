@@ -21,8 +21,8 @@ import * as http from 'http';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-const BASE_URL   = 'http://localhost:5173';
-const API_URL    = 'http://localhost:8080';
+const BASE_URL   = process.env.BASE_URL || 'http://localhost:5173';
+const API_URL    = process.env.API_URL || 'http://localhost:8787';
 const SHOTS_DIR  = path.join(__dirname, '..', 'demo', 'screenshots');
 const TEST_FILES = path.join(__dirname, '..', '..', 'test-files');
 
@@ -58,10 +58,11 @@ async function uploadViaApi(filePath: string, expirationMinutes = 30): Promise<{
   return new Promise((resolve, reject) => {
     const headers = form.getHeaders();
     const fileData = form.getBuffer();
+    const urlObj = new URL(`${API_URL}/api/files?expirationMinutes=${expirationMinutes}`);
     const options = {
-      hostname: 'localhost',
-      port: 8080,
-      path: `/api/files?expirationMinutes=${expirationMinutes}`,
+      hostname: urlObj.hostname,
+      port: parseInt(urlObj.port) || 8787,
+      path: urlObj.pathname + urlObj.search,
       method: 'POST',
       headers: { ...headers, 'Content-Length': fileData.length },
     };
@@ -81,8 +82,9 @@ async function uploadViaApi(filePath: string, expirationMinutes = 30): Promise<{
 /** DELETE a file by ID */
 function deleteFile(id: string): Promise<number> {
   return new Promise((resolve, reject) => {
+    const urlObj = new URL(`${API_URL}/api/files/${id}`);
     const req = http.request(
-      { hostname: 'localhost', port: 8080, path: `/api/files/${id}`, method: 'DELETE' },
+      { hostname: urlObj.hostname, port: parseInt(urlObj.port) || 8787, path: urlObj.pathname, method: 'DELETE' },
       (res) => { res.resume(); resolve(res.statusCode ?? 0); }
     );
     req.on('error', reject);
@@ -501,9 +503,9 @@ test('Demo 15 · Summary', async () => {
   console.log('  🎉  ALL DEMO TESTS PASSED');
   console.log('══════════════════════════════════════════════');
   console.log(`  Frontend  : http://localhost:5173`);
-  console.log(`  Backend   : http://localhost:8080`);
-  console.log(`  Swagger   : http://localhost:8080/swagger-ui.html`);
-  console.log(`  Storage   : d:\\PROJECT-FINAL\\Kiro\\QR-CODE\\backend\\storage\\`);
+  console.log(`  Backend   : ${API_URL}`);
+  console.log(`  Swagger   : ${API_URL}/swagger-ui.html`);
+  console.log(`  Storage   : ./backend/storage/`);
   console.log('');
 
   const shots = fs.readdirSync(SHOTS_DIR).filter(f => f.endsWith('.png')).sort();
