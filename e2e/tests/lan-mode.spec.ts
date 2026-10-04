@@ -9,6 +9,11 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:8787';
+// The runtime port is dynamic (single source of truth: the backend picks a free
+// port and reports it via /api/network/info). Derive the expected port from the
+// URL the stack is actually running on rather than hard-coding 8787, so this
+// test validates the real contract — network-info.port == the bound port.
+const EXPECTED_PORT = Number(new URL(BASE_URL).port || '8787');
 const FIXTURES_DIR = path.join(__dirname, 'fixtures');
 const TEST_TXT = path.join(FIXTURES_DIR, 'test.txt');
 
@@ -26,7 +31,7 @@ test('LAN-01: GET /api/network/info returns valid network info', async () => {
   expect(body).toHaveProperty('port');
   expect(body).toHaveProperty('shareBaseUrl');
   expect(body).toHaveProperty('allInterfaces');
-  expect(body.port).toBe(8787);
+  expect(body.port).toBe(EXPECTED_PORT);
   expect(body.shareBaseUrl).toMatch(/^http:\/\//);
   // localIp may be 127.0.0.1 if no LAN is available in CI, so we just check it's present
   expect(typeof body.localIp).toBe('string');
