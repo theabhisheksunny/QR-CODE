@@ -1,0 +1,37 @@
+<!--
+  AndroidManifest additions for Universal QR Sharing (Android client).
+
+  `npx cap add android` generates frontend/android/app/src/main/AndroidManifest.xml.
+  Apply the edits below to that generated file. Capacitor adds INTERNET itself;
+  the two scanner/camera lines and the <application> attributes are what this
+  feature requires.
+
+  Request ONLY what the app actually uses:
+    - CAMERA        : QR scanning (@capacitor-mlkit/barcode-scanning).
+    - INTERNET      : reach the LAN backend (added by Capacitor by default).
+    - ACCESS_NETWORK_STATE : detect connectivity before sharing (optional).
+
+  No broad storage permissions: file selection uses the Storage Access
+  Framework (document picker), which needs no READ/WRITE_EXTERNAL_STORAGE.
+-->
+
+<!-- 1. Permissions: place these as direct children of <manifest>. -->
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.CAMERA" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+<!-- 2. Declare the camera feature as optional so the app still installs on
+        camera-less devices (scanning simply fails gracefully). -->
+<uses-feature android:name="android.hardware.camera" android:required="false" />
+
+<!--
+  3. On the generated <application> element, set these two attributes:
+
+       <application
+           ...
+           android:usesCleartextTraffic="true"
+           android:networkSecurityConfig="@xml/network_security_config">
+
+     usesCleartextTraffic="true" is REQUIRED: LAN sharing uses plain http://
+     (no TLS on a local network). It is scoped by network_security_config.xml.
+-->

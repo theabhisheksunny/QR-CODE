@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { QrCode, Upload, ArrowRight } from 'lucide-react';
 import { NetworkStatusBar } from '../components/NetworkStatusBar';
+import { ScanQrButton } from '../components/ScanQrButton';
 
 export const HomePage = () => {
   const navigate = useNavigate();
@@ -11,6 +12,8 @@ export const HomePage = () => {
         <p className="mt-3 text-gray-500 dark:text-gray-400 text-lg">Generate QR codes instantly. Share files between devices.</p>
       </div>
       <NetworkStatusBar />
+      {/* Native-only (Android app): renders nothing on web. */}
+      <ScanQrButton />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
         <button
           onClick={() => navigate('/text')}

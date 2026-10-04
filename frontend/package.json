@@ -15,9 +15,13 @@
     "react-router-dom": "^6.20.0",
     "axios": "^1.6.2",
     "lucide-react": "^0.294.0",
-    "react-hot-toast": "^2.4.1"
+    "react-hot-toast": "^2.4.1",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor-mlkit/barcode-scanning": "^7.0.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/android": "^7.0.0",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
     "@typescript-eslint/eslint-plugin": "^6.10.0",

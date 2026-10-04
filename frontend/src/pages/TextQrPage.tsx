@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { QrCode, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { generateTextQr } from '../api/qr';
@@ -7,7 +8,10 @@ import { QrValueResponse } from '../types';
 import { useQrHistory } from '../hooks/useQrHistory';
 
 export const TextQrPage = () => {
-  const [value, setValue] = useState('');
+  const location = useLocation();
+  // Optionally pre-filled when navigated from a native QR scan (text/number/JSON).
+  const scanned = (location.state as { scanned?: string } | null)?.scanned ?? '';
+  const [value, setValue] = useState(scanned);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<QrValueResponse | null>(null);
   const { addEntry } = useQrHistory();
