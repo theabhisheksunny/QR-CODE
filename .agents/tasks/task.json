@@ -1,7 +1,7 @@
 {
-  "task_id": "task-deep-cleanup",
-  "task_description": "Complete deep cleanup of Universal QR Local Network Sharing app: delete agent artifacts and dead files, remove dead Java code, fix stale configs, eliminate unused npm dependency, fix broken e2e tests, and overhaul documentation.",
-  "status": "pending",
-  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "task_id": "task-windows-android-packaging",
+  "task_description": "Package the Universal QR local-network sharing app for Windows (jpackage app-image, real installer attempted) and Android (Capacitor project, APK build documented), with backend runtime hardening (dynamic app-data paths, dynamic port, ShareUrlService, diagnostics, atomic uploads, firewall advice). Honest build-and-verify-what-the-environment-supports strategy: VERIFIED / BUILT-NOT-VERIFIED / BLOCKED, never fake a test result.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
   "blocked_reason": null
 }

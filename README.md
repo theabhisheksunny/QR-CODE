@@ -337,6 +337,84 @@ QR codes will now embed `http://192.168.1.42:8787/share/{token}` as the share UR
 
 ---
 
+## Windows Desktop App (self-contained)
+
+The app can be packaged for Windows into a **self-contained** application that
+bundles its own Java runtime. The installed app needs **no** separately
+installed Java, Maven, Node, npm, Docker, or Python, and it does **not** depend
+on a dev server (`npm run dev` / `mvn spring-boot:run`).
+
+```powershell
+# 1. Build the fat jar (frontend bundled into the Spring Boot static resources)
+.\windows\build-jar.ps1
+
+# 2. Build the self-contained app-image (bundled JRE via jlink)
+.\windows\build-app-image.ps1
+#    -> release\windows\UniversalQRSharing\UniversalQRSharing.exe
+```
+
+Launching the app initializes runtime config, creates its data directories,
+selects an available port (preferring 8787), detects the active LAN interface,
+starts the backend, serves the bundled SPA, and exposes
+`GET /api/diagnostics` (version, port, interface, LAN IP, storage path/status,
+active shares, cleanup status).
+
+**Persistent user data** lives under `%LOCALAPPDATA%\UniversalQRSharing`
+(`storage/files`, `storage/temp`, `storage/metadata`, `logs`, `config`) —
+**never** inside `Program Files` or the app directory — so upgrades preserve it.
+
+### Real `.exe` installer
+
+```powershell
+.\windows\build-installer.ps1
+#    -> release\windows\UniversalQRSharing-1.0.0.exe
+```
+
+| Artifact | Status in this environment |
+| --- | --- |
+| Self-contained app-image | **BUILT & VERIFIED** (launched; health, upload/download SHA-256, delete, diagnostics all checked) |
+| `.exe` installer | **BLOCKED** — `jpackage --type exe` needs the WiX Toolset, which is not installed here. The script is ready to run on a WiX-equipped machine. |
+
+If LAN devices cannot reach the share URL, add a narrow inbound firewall rule
+(elevated PowerShell): `.\windows\add-firewall-rule.ps1 -Port 8787`. The app
+never modifies the firewall itself.
+
+See [docs/packaging.md](docs/packaging.md) for the full build and
+[docs/troubleshooting.md](docs/troubleshooting.md) for firewall, port-conflict,
+and QR-shows-localhost fixes.
+
+---
+
+## Android App (Capacitor)
+
+The Android app is **not a second application**. It wraps the existing React
+frontend with [Capacitor](https://capacitorjs.com/) and reuses the same UI,
+the same shared axios client, and the same business logic. Android-specific
+additions are a platform-aware API base URL (native points at the configured
+LAN host), a native QR scanner (`@capacitor-mlkit/barcode-scanning`), and
+Android permissions + cleartext config for http LAN sharing. The Android device
+is a **client** of the desktop backend over the LAN; it runs no local backend.
+
+```powershell
+cd frontend
+npm run build
+npx cap sync android
+cd android
+.\gradlew assembleDebug        # requires JDK 17 + Android SDK
+```
+
+| Step | Status in this environment |
+| --- | --- |
+| Web build / lint / type-check | **VERIFIED** (`npm run build`, `npm run lint`, `npx tsc --noEmit` all exit 0 with Capacitor + scanner code) |
+| `npx cap add android` / `cap sync` | **VERIFIED** (`android platform added!`, `Sync finished`) |
+| APK Gradle build | **BLOCKED** — no Android SDK (`ANDROID_HOME`/`adb` absent) and installed JDK 25 is rejected by the Gradle wrapper (`Unsupported class file major version 69`; use JDK 17). No device/emulator. |
+
+See [docs/android.md](docs/android.md) and
+[android/BUILD-ANDROID.md](android/BUILD-ANDROID.md) for the exact APK build and
+keystore signing steps.
+
+---
+
 ## Project Structure
 
 ```
