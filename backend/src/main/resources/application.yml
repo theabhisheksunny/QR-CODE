@@ -12,9 +12,10 @@ server:
 
 app:
   server-port: ${SERVER_PORT:8787}
+  app-version: ${APP_VERSION:1.0.0}
   storage:
-    path: ${FILE_STORAGE_PATH:./storage/files}
-  metadata-storage-path: ${METADATA_STORAGE_PATH:./storage/metadata}
+    path: ${FILE_STORAGE_PATH:}
+  metadata-storage-path: ${METADATA_STORAGE_PATH:}
   default-expiration-minutes: ${DEFAULT_EXPIRATION_MINUTES:30}
   max-file-size-mb: ${MAX_FILE_SIZE_MB:25}
   cleanup-interval-ms: ${CLEANUP_INTERVAL_MS:60000}

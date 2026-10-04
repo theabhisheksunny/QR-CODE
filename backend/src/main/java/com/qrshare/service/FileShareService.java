@@ -31,7 +31,7 @@ public class FileShareService {
     private final QrCodeService qrCodeService;
     private final TokenUtil tokenUtil;
     private final AppProperties appProperties;
-    private final NetworkService networkService;
+    private final ShareUrlService shareUrlService;
 
     public FileUploadResponse uploadFile(MultipartFile file, int expirationMinutes) {
         if (file == null || file.isEmpty()) {
@@ -48,6 +48,8 @@ public class FileShareService {
         String storageKey = UUID.randomUUID().toString();
         String rawToken = tokenUtil.generateToken();
 
+        // Store the blob first; persist metadata only after a successful store so
+        // a failed/aborted upload never leaves orphaned metadata behind.
         try {
             fileStorageService.store(file.getInputStream(), storageKey, file.getContentType());
         } catch (IOException e) {
@@ -55,20 +57,27 @@ public class FileShareService {
         }
 
         Instant now = Instant.now();
-        SharedFileMetadata metadata = SharedFileMetadata.builder()
-            .id(UUID.randomUUID())
-            .token(rawToken)
-            .originalFileName(file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown")
-            .storageKey(storageKey)
-            .contentType(file.getContentType())
-            .fileSize(file.getSize())
-            .createdAt(now)
-            .expiresAt(now.plus(expirationMinutes, ChronoUnit.MINUTES))
-            .downloadCount(0)
-            .status("ACTIVE")
-            .build();
+        SharedFileMetadata metadata;
+        try {
+            metadata = SharedFileMetadata.builder()
+                .id(UUID.randomUUID())
+                .token(rawToken)
+                .originalFileName(file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown")
+                .storageKey(storageKey)
+                .contentType(file.getContentType())
+                .fileSize(file.getSize())
+                .createdAt(now)
+                .expiresAt(now.plus(expirationMinutes, ChronoUnit.MINUTES))
+                .downloadCount(0)
+                .status("ACTIVE")
+                .build();
 
-        metadata = metadataStorageService.save(metadata);
+            metadata = metadataStorageService.save(metadata);
+        } catch (RuntimeException e) {
+            // Metadata persistence failed after the blob landed: roll back the blob.
+            fileStorageService.delete(storageKey);
+            throw e;
+        }
 
         String shareUrl = buildShareUrl(rawToken);
         String qrCode = qrCodeService.generateQrCode(shareUrl);
@@ -152,7 +161,7 @@ public class FileShareService {
     }
 
     private String buildShareUrl(String rawToken) {
-        return networkService.getShareBaseUrl(appProperties.getServerPort()) + "/share/" + rawToken;
+        return shareUrlService.buildShareUrl(rawToken);
     }
 
     private FileMetadataResponse mapToMetadataResponse(SharedFileMetadata metadata, String shareUrl) {

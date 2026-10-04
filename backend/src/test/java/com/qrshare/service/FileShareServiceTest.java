@@ -50,7 +50,7 @@ class FileShareServiceTest {
     private AppProperties appProperties;
 
     @Mock
-    private NetworkService networkService;
+    private ShareUrlService shareUrlService;
 
     @InjectMocks
     private FileShareService fileShareService;
@@ -65,8 +65,8 @@ class FileShareServiceTest {
     @Test
     void testUploadFile_success() throws IOException {
         when(appProperties.getMaxFileSizeMb()).thenReturn(25);
-        when(appProperties.getServerPort()).thenReturn(8787);
-        when(networkService.getShareBaseUrl(anyInt())).thenReturn("http://192.168.1.100:8787");
+        when(shareUrlService.buildShareUrl(anyString()))
+            .thenReturn("http://192.168.1.100:8787/share/" + RAW_TOKEN);
         when(tokenUtil.generateToken()).thenReturn(RAW_TOKEN);
         when(qrCodeService.generateQrCode(anyString())).thenReturn("data:image/png;base64,QRDATA");
 

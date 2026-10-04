@@ -2,6 +2,8 @@ package com.qrshare.storage;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qrshare.config.AppProperties;
+import com.qrshare.config.RuntimePaths;
+import com.qrshare.config.StorageConfig;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +24,12 @@ import java.util.stream.Stream;
 public class LocalMetadataStorageService implements MetadataStorageService {
 
     private final AppProperties appProperties;
+    private final RuntimePaths runtimePaths;
     private final ObjectMapper objectMapper;
+
+    private Path metadataDir() {
+        return StorageConfig.resolveMetadataDir(appProperties, runtimePaths);
+    }
 
     // In-memory cache: id (string) -> metadata
     private final ConcurrentHashMap<String, SharedFileMetadata> cache = new ConcurrentHashMap<>();
@@ -31,7 +38,7 @@ public class LocalMetadataStorageService implements MetadataStorageService {
 
     @PostConstruct
     public void loadAll() {
-        Path metaDir = Path.of(appProperties.getMetadataStoragePath());
+        Path metaDir = metadataDir();
         try {
             Files.createDirectories(metaDir);
         } catch (IOException e) {
@@ -114,6 +121,6 @@ public class LocalMetadataStorageService implements MetadataStorageService {
     }
 
     private Path metadataPath(UUID id) {
-        return Path.of(appProperties.getMetadataStoragePath()).resolve(id.toString() + ".json");
+        return metadataDir().resolve(id.toString() + ".json");
     }
 }

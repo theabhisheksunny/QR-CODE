@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 @Slf4j
@@ -19,9 +20,18 @@ public class CleanupService {
     private final MetadataStorageService metadataStorageService;
     private final FileStorageService fileStorageService;
 
+    /** Epoch seconds of the last cleanup run; 0 until the first run completes. */
+    private final AtomicLong lastRunEpoch = new AtomicLong(0L);
+
+    /** Exposes the epoch-seconds timestamp of the last cleanup run (0 if never). */
+    public long getLastRunEpoch() {
+        return lastRunEpoch.get();
+    }
+
     @Scheduled(fixedRateString = "${app.cleanup-interval-ms:60000}")
     public void cleanupExpiredFiles() {
         Instant now = Instant.now();
+        lastRunEpoch.set(now.getEpochSecond());
         List<SharedFileMetadata> expired = metadataStorageService.findExpired(now);
 
         if (expired.isEmpty()) {

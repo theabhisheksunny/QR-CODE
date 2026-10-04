@@ -20,11 +20,34 @@ import java.nio.file.Path;
 public class StorageConfig {
 
     private final AppProperties appProperties;
+    private final RuntimePaths runtimePaths;
 
     @PostConstruct
     public void initStorageDirectories() {
-        createDir(Path.of(appProperties.getStorage().getPath()), "files storage");
-        createDir(Path.of(appProperties.getMetadataStoragePath()), "metadata storage");
+        createDir(resolveFilesDir(appProperties, runtimePaths), "files storage");
+        createDir(resolveMetadataDir(appProperties, runtimePaths), "metadata storage");
+    }
+
+    /**
+     * Effective files directory: explicit {@code app.storage.path} if non-blank
+     * (dev/test back-compat) else the dynamic {@link RuntimePaths#filesDir()}.
+     */
+    public static Path resolveFilesDir(AppProperties appProperties, RuntimePaths runtimePaths) {
+        String explicit = appProperties.getStorage().getPath();
+        return (explicit != null && !explicit.isBlank())
+            ? Path.of(explicit)
+            : runtimePaths.filesDir();
+    }
+
+    /**
+     * Effective metadata directory: explicit {@code app.metadata-storage-path}
+     * if non-blank (dev/test back-compat) else {@link RuntimePaths#metadataDir()}.
+     */
+    public static Path resolveMetadataDir(AppProperties appProperties, RuntimePaths runtimePaths) {
+        String explicit = appProperties.getMetadataStoragePath();
+        return (explicit != null && !explicit.isBlank())
+            ? Path.of(explicit)
+            : runtimePaths.metadataDir();
     }
 
     private void createDir(Path path, String label) {
