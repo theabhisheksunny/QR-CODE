@@ -16,6 +16,9 @@ e2e/demo/screenshots/
 # Packaging output (jpackage app-image, bundled runtime, installer, staging)
 release/
 
+# Downloaded build toolchains (WiX binaries, Android SDK, cmdline-tools)
+.tools/
+
 # Storage (uploaded files & metadata - runtime data)
 storage/
 backend/storage/
