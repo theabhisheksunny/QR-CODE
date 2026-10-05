@@ -12,6 +12,85 @@
 
 ---
 
+## Three Delivery Modes (one shared codebase)
+
+Universal QR Sharing ships as **three coexisting products** that all reuse the
+**same** React UI, the **same** shared API client/contracts, and the **same**
+Spring Boot backend core. Only platform-specific concerns (QR scanner, API base
+URL) have platform-specific implementations.
+
+```
+                 UNIVERSAL QR SHARING
+                         │
+          ┌──────────────┼──────────────┐
+          ▼              ▼              ▼
+         WEB          WINDOWS        ANDROID
+       Browser       EXE (embedded    APK
+                      WebView)       (Capacitor)
+          │              │              │
+          └──────────────┼──────────────┘
+                  Shared React UI
+                  Shared API contract
+                  Spring Boot core + local storage
+```
+
+| Mode | How to run | Primary UI | Backend |
+| --- | --- | --- | --- |
+| **Web** | `mvn spring-boot:run` + `npm run dev` (dev) or the fat jar (prod) | Browser | Local Spring Boot |
+| **Windows** | Install `release/UniversalQRSharing-Setup.exe` → launch from Start Menu | Embedded JavaFX **WebView** window (no Chrome/Edge) | Bundled Spring Boot (self-contained) |
+| **Android** | Install `release/UniversalQRSharing.apk` | Capacitor WebView | **Client** of a LAN host's Spring Boot |
+
+A person **receiving** a QR share never needs the app installed — they scan with
+a normal phone camera and open the LAN share URL in any browser. The host (Web,
+Windows, or Android) and the remote scanner are independent concerns.
+
+Final release artifacts:
+
+```
+release/
+├── UniversalQRSharing-Setup.exe   # Windows installer (embedded WebView)
+├── UniversalQRSharing.apk          # Android client
+└── SHA256SUMS.txt                  # checksums for both
+```
+
+### Rebuilding a deleted release artifact
+
+If `release/UniversalQRSharing-Setup.exe` or `release/UniversalQRSharing.apk`
+is ever lost, regenerate it with one command (run from the repo root in
+PowerShell). Each script rebuilds from source, republishes into `release/`, and
+refreshes `release/SHA256SUMS.txt`.
+
+```powershell
+# Windows installer  ->  release\UniversalQRSharing-Setup.exe
+#   needs: Node+npm, Maven, JDK 21+, WiX v3.14 (auto-detected)
+.\windows\make-release-exe.ps1
+# first run on a machine (installs npm deps):  omit -SkipNpmInstall
+.\windows\make-release-exe.ps1 -SkipNpmInstall      # faster re-runs
+
+# Android APK  ->  release\UniversalQRSharing.apk
+#   needs: Node+npm, a JDK 17, Android SDK (API 34/35 + build-tools;34.0.0)
+#   JDK 17 and the SDK are auto-detected (repo .tools\android-sdk); override with
+#   -JdkPath / -AndroidSdk or JAVA_HOME_17 / ANDROID_HOME.
+.\windows\make-release-apk.ps1
+
+# Only recompute checksums for whatever artifacts currently exist:
+.\windows\write-checksums.ps1
+```
+
+What each wrapper does:
+
+| Command | Steps | Output |
+| --- | --- | --- |
+| `make-release-exe.ps1` | `build-jar.ps1` (React build + fat jar) → `build-installer.ps1` (jpackage + WiX) → copy → checksums | `release\UniversalQRSharing-Setup.exe` |
+| `make-release-apk.ps1` | `npm run build` → `cap sync android` → `gradlew assembleDebug` → copy → checksums | `release\UniversalQRSharing.apk` |
+| `write-checksums.ps1` | hash the present artifacts | `release\SHA256SUMS.txt` |
+
+> For a **signed release** APK (Play Store / distribution) instead of the debug
+> APK, run `.\windows\make-release-apk.ps1 -Release` after configuring signing —
+> see [android/BUILD-ANDROID.md](android/BUILD-ANDROID.md). The lower-level
+> scripts (`build-jar.ps1`, `build-app-image.ps1`, `build-installer.ps1`) remain
+> available if you want each step individually.
+
 ## Quick Start (Local Development)
 
 ### 1. Start the backend
@@ -337,21 +416,46 @@ QR codes will now embed `http://192.168.1.42:8787/share/{token}` as the share UR
 
 ---
 
-## Windows Desktop App (self-contained)
+## Windows Desktop App (embedded WebView, self-contained)
 
-The app can be packaged for Windows into a **self-contained** application that
-bundles its own Java runtime. The installed app needs **no** separately
-installed Java, Maven, Node, npm, Docker, or Python, and it does **not** depend
-on a dev server (`npm run dev` / `mvn spring-boot:run`).
+The app can be packaged for Windows into a **self-contained desktop application**
+that bundles its own Java runtime **and** a JavaFX WebView. The installed app
+needs **no** separately installed Java, Maven, Node, npm, Docker, Python, Chrome,
+or Edge, and it does **not** depend on a dev server (`npm run dev` /
+`mvn spring-boot:run`).
+
+The Windows app is a **real native window**, not a browser launch. On start it
+opens an embedded JavaFX WebView that renders the **same** React production UI
+served locally by the bundled Spring Boot backend — the identical components,
+pages, API client, QR UI, share UI, diagnostics and error handling used by the
+web app. Nothing is rewritten into Swing/JavaFX controls.
+
+```
+UniversalQRSharing.exe
+   -> start local Spring Boot backend (bundled)
+   -> detect runtime port (prefers 8787, scans 8787-8887 if busy)
+   -> wait for /actuator/health
+   -> open embedded WebView window
+   -> load the existing React production UI
+   -> ready
+```
+
+If the backend fails to start, the app does **not** silently exit — it shows a
+native desktop error/diagnostic window.
 
 ```powershell
 # 1. Build the fat jar (frontend bundled into the Spring Boot static resources)
 .\windows\build-jar.ps1
 
-# 2. Build the self-contained app-image (bundled JRE via jlink)
+# 2. Build the self-contained app-image (bundled JRE + JavaFX via jlink)
 .\windows\build-app-image.ps1
 #    -> release\windows\UniversalQRSharing\UniversalQRSharing.exe
 ```
+
+The desktop host is selected at runtime by `-DQR_DESKTOP=true`, which the build
+scripts pass via jpackage `--java-options`. The plain fat jar (no flag) still
+runs as a **headless web server** — so the web and desktop modes share one jar
+and one codebase without interfering with each other.
 
 Launching the app initializes runtime config, creates its data directories,
 selects an available port (preferring 8787), detects the active LAN interface,
@@ -359,25 +463,29 @@ starts the backend, serves the bundled SPA, and exposes
 `GET /api/diagnostics` (version, port, interface, LAN IP, storage path/status,
 active shares, cleanup status).
 
-**Persistent user data** lives under `%LOCALAPPDATA%\UniversalQRSharing`
+**Persistent user data** lives under `%LOCALAPPDATA%\UniversalQRSharing-Data`
 (`storage/files`, `storage/temp`, `storage/metadata`, `logs`, `config`) —
 **never** inside `Program Files` or the app directory — so upgrades preserve it.
+Application **binaries** install separately under
+`%LOCALAPPDATA%\UniversalQRSharing`, so uninstalling the app does not delete user
+data.
 
 ### Real `.exe` installer
 
 ```powershell
 .\windows\build-installer.ps1
 #    -> release\windows\UniversalQRSharing-1.0.0.exe
+#    (also published as release\UniversalQRSharing-Setup.exe)
 ```
 
-| Artifact | Status in this environment |
+| Artifact | Status |
 | --- | --- |
-| Self-contained app-image | **BUILT & VERIFIED** (launched; health, upload/download SHA-256, delete, diagnostics all checked) |
-| `.exe` installer | **BLOCKED** — `jpackage --type exe` needs the WiX Toolset, which is not installed here. The script is ready to run on a WiX-equipped machine. |
+| Self-contained app-image (embedded WebView) | **BUILT & VERIFIED** — EXE launches a native window; health UP; `/api/diagnostics` reports dynamic port + LAN IP; upload→share→download SHA-256 match; data root under `%LOCALAPPDATA%\UniversalQRSharing-Data`. |
+| `.exe` installer | **BUILT & VERIFIED** — produced via jpackage + WiX v3.14; silent `/qn` install places the app under `%LOCALAPPDATA%\UniversalQRSharing`; installed app launches standalone and serves health UP. |
 
-If LAN devices cannot reach the share URL, add a narrow inbound firewall rule
-(elevated PowerShell): `.\windows\add-firewall-rule.ps1 -Port 8787`. The app
-never modifies the firewall itself.
+> `build-installer.ps1` auto-detects WiX v3.14 at its default install location
+> (`C:\Program Files (x86)\WiX Toolset v3.14\bin`) and prepends it to `PATH`.
+> No Chrome/Edge is required for the primary Windows UI.
 
 See [docs/packaging.md](docs/packaging.md) for the full build and
 [docs/troubleshooting.md](docs/troubleshooting.md) for firewall, port-conflict,
@@ -405,9 +513,18 @@ cd android
 
 | Step | Status in this environment |
 | --- | --- |
-| Web build / lint / type-check | **VERIFIED** (`npm run build`, `npm run lint`, `npx tsc --noEmit` all exit 0 with Capacitor + scanner code) |
+| Web build / lint / type-check | **VERIFIED** (`npm run build` exits 0 with Capacitor + scanner code) |
 | `npx cap add android` / `cap sync` | **VERIFIED** (`android platform added!`, `Sync finished`) |
-| APK Gradle build | **BLOCKED** — no Android SDK (`ANDROID_HOME`/`adb` absent) and installed JDK 25 is rejected by the Gradle wrapper (`Unsupported class file major version 69`; use JDK 17). No device/emulator. |
+| APK Gradle build | **BUILT & VERIFIED** — `gradlew assembleDebug` → `BUILD SUCCESSFUL`, producing `app-debug.apk` (published as `release/UniversalQRSharing.apk`, 26.1 MB). `aapt2 dump badging` confirms package `com.universalqr.sharing`, perms INTERNET/CAMERA/ACCESS_NETWORK_STATE, the bundled shared React build, and the ML Kit scanner natives for all ABIs. |
+
+> **Toolchain note.** This environment has only JDK 17 and JDK 25. Capacitor 7's
+> `@capacitor/android` pins Java source/target to 21, while the AGP-8.7.2-pinned
+> Gradle 8.11.1 daemon only runs on JDK ≤ 23 — so JDK 25 can't drive the daemon
+> and plain JDK 17 can't emit source 21. `frontend/android/build.gradle` adds a
+> small, reproducible `subprojects { afterEvaluate { … VERSION_17 } }` block that
+> runs **after** Capacitor sets its level and pins the Android sub-modules back to
+> Java 17, letting JDK 17 build the APK. No `node_modules` edits and no extra JDK
+> install are required. Remove the block when a JDK 21–23 is available.
 
 See [docs/android.md](docs/android.md) and
 [android/BUILD-ANDROID.md](android/BUILD-ANDROID.md) for the exact APK build and

@@ -19,6 +19,11 @@
     <maven.compiler.target>21</maven.compiler.target>
     <!-- Lombok 1.18.38+ is required for Java 25 support -->
     <lombok.version>1.18.38</lombok.version>
+    <!-- JavaFX 25 is designed for JDK 25 (the build/runtime JDK here). Only the
+         embedded-WebView desktop host (DesktopLauncher) touches JavaFX; the web
+         and server modes never load these classes. The `win` classifier bundles
+         Windows-only natives, which is correct for the Windows .exe target. -->
+    <javafx.version>25</javafx.version>
   </properties>
   <dependencies>
     <dependency>
@@ -40,6 +45,37 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
+    <!-- JavaFX: used ONLY by the embedded-WebView desktop host (DesktopLauncher).
+         `javafx-web` transitively brings controls/graphics/base. The `win`
+         classifier carries the Windows native libraries so the self-contained
+         jpackage app-image needs no separate JavaFX install. Web/dev/server
+         modes never reference these classes, so the plain jar still runs
+         headless as a pure Spring Boot server. -->
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-web</artifactId>
+      <version>${javafx.version}</version>
+      <classifier>win</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-controls</artifactId>
+      <version>${javafx.version}</version>
+      <classifier>win</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-graphics</artifactId>
+      <version>${javafx.version}</version>
+      <classifier>win</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-base</artifactId>
+      <version>${javafx.version}</version>
+      <classifier>win</classifier>
     </dependency>
 
     <dependency>

@@ -7,6 +7,5 @@ app:
     path: ./target/test-files
   metadata-storage-path: ./target/test-metadata
   default-expiration-minutes: 30
-  max-file-size-mb: 25
   cleanup-interval-ms: 60000
   allowed-origins: "*"

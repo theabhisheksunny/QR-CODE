@@ -3,7 +3,6 @@ package com.qrshare.service;
 import com.qrshare.config.AppProperties;
 import com.qrshare.dto.FileUploadResponse;
 import com.qrshare.exception.FileNotFoundException;
-import com.qrshare.exception.FileTooLargeException;
 import com.qrshare.storage.MetadataStorageService;
 import com.qrshare.storage.SharedFileMetadata;
 import com.qrshare.storage.FileStorageService;
@@ -64,7 +63,6 @@ class FileShareServiceTest {
 
     @Test
     void testUploadFile_success() throws IOException {
-        when(appProperties.getMaxFileSizeMb()).thenReturn(25);
         when(shareUrlService.buildShareUrl(anyString()))
             .thenReturn("http://192.168.1.100:8787/share/" + RAW_TOKEN);
         when(tokenUtil.generateToken()).thenReturn(RAW_TOKEN);
@@ -106,24 +104,41 @@ class FileShareServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // uploadFile — file too large
+    // uploadFile — large files are ACCEPTED (no artificial size cap)
     // -------------------------------------------------------------------------
 
     @Test
-    void testUploadFile_fileTooLarge() throws Exception {
-        when(appProperties.getMaxFileSizeMb()).thenReturn(25);
+    void testUploadFile_largeFileAccepted() throws Exception {
+        when(shareUrlService.buildShareUrl(anyString()))
+            .thenReturn("http://192.168.1.100:8787/share/" + RAW_TOKEN);
+        when(tokenUtil.generateToken()).thenReturn(RAW_TOKEN);
+        when(qrCodeService.generateQrCode(anyString())).thenReturn("data:image/png;base64,QRDATA");
 
         MultipartFile mockFile = mock(MultipartFile.class);
         when(mockFile.isEmpty()).thenReturn(false);
-        // 26 MB > 25 MB limit
-        long tooBig = 26L * 1024 * 1024;
-        when(mockFile.getSize()).thenReturn(tooBig);
+        // 5 GB — would have been rejected by the old 25 MB cap. getInputStream()
+        // is what the service streams; getSize() is only recorded as metadata.
+        long fiveGb = 5L * 1024 * 1024 * 1024;
+        when(mockFile.getSize()).thenReturn(fiveGb);
+        when(mockFile.getOriginalFilename()).thenReturn("huge.mkv");
+        when(mockFile.getContentType()).thenReturn("video/x-matroska");
+        when(mockFile.getInputStream()).thenReturn(new ByteArrayInputStream(new byte[0]));
 
-        assertThatThrownBy(() -> fileShareService.uploadFile(mockFile, 30))
-                .isInstanceOf(FileTooLargeException.class);
+        SharedFileMetadata savedMetadata = SharedFileMetadata.builder()
+                .id(FILE_ID).token(RAW_TOKEN).originalFileName("huge.mkv")
+                .contentType("video/x-matroska").fileSize(fiveGb).storageKey("some-uuid")
+                .createdAt(Instant.now()).expiresAt(Instant.now().plusSeconds(1800))
+                .downloadCount(0).status("ACTIVE").build();
+        when(metadataStorageService.save(any(SharedFileMetadata.class))).thenReturn(savedMetadata);
+        when(fileStorageService.store(any(), anyString(), any())).thenReturn("some-uuid");
 
-        verify(metadataStorageService, never()).save(any());
-        verify(fileStorageService, never()).store(any(), any(), any());
+        FileUploadResponse response = fileShareService.uploadFile(mockFile, 30);
+
+        // No FileTooLargeException: the 5 GB file is stored and shared.
+        verify(fileStorageService).store(any(), anyString(), any());
+        verify(metadataStorageService).save(any(SharedFileMetadata.class));
+        assertThat(response.getFileSize()).isEqualTo(fiveGb);
+        assertThat(response.getShareUrl()).contains("/share/");
     }
 
     // -------------------------------------------------------------------------

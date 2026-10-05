@@ -69,6 +69,27 @@ if (-not (Test-Path $jar)) {
 $wixFound = (Get-Command wix -ErrorAction SilentlyContinue) `
          -or (Get-Command candle -ErrorAction SilentlyContinue) `
          -or (Get-Command light -ErrorAction SilentlyContinue)
+
+# WiX v3 is frequently installed to its default dir but NOT added to PATH, and we
+# also ship a copy under .tools\wix314. jpackage shells out to candle/light and
+# needs them discoverable on PATH, so probe the well-known locations and prepend
+# the first one that has candle.exe + light.exe.
+if (-not $wixFound) {
+    $wixCandidates = @(
+        'C:\Program Files (x86)\WiX Toolset v3.14\bin',
+        'C:\Program Files\WiX Toolset v3.14\bin',
+        (Join-Path $repoRoot '.tools\wix314')
+    )
+    foreach ($dir in $wixCandidates) {
+        if ((Test-Path (Join-Path $dir 'candle.exe')) -and (Test-Path (Join-Path $dir 'light.exe'))) {
+            Write-Host "[installer] found WiX v3 at: $dir (adding to PATH)"
+            $env:PATH = "$dir;$env:PATH"
+            $wixFound = $true
+            break
+        }
+    }
+}
+
 if (-not $wixFound) {
     throw @"
 WiX Toolset not found on PATH. jpackage --type exe needs WiX v3 (candle.exe + light.exe)
@@ -79,6 +100,17 @@ fallback artifact when the installer cannot be built here.
 }
 
 if (-not (Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir | Out-Null }
+
+# jpackage refuses to overwrite an existing installer and the previous one may be
+# read-only (jpackage marks its output read-only), which otherwise fails with
+# java.nio.file.AccessDeniedException. Clear any stale output up front so the
+# installer can always be regenerated.
+$staleInstaller = Join-Path $destDir "$appName-$AppVersion.exe"
+if (Test-Path $staleInstaller) {
+    attrib -r $staleInstaller 2>$null
+    Remove-Item $staleInstaller -Force
+    Write-Host "[installer] removed stale installer: $staleInstaller"
+}
 
 # Stage ONLY the fat jar as jpackage input (clean app payload).
 if (Test-Path $inputDir) { Remove-Item $inputDir -Recurse -Force }
@@ -96,10 +128,13 @@ jpackage `
     --app-version $AppVersion `
     --vendor "Universal QR" `
     --java-options "-Xmx512m" `
-    --add-modules "java.base,java.desktop,java.instrument,java.management,java.naming,java.net.http,java.prefs,java.rmi,java.scripting,java.security.jgss,java.sql,jdk.crypto.ec,jdk.unsupported,jdk.charsets,jdk.localedata,jdk.zipfs" `
+    --java-options "-DQR_DESKTOP=true" `
+    --java-options "-Djava.awt.headless=false" `
+    --add-modules "java.base,java.desktop,java.instrument,java.management,java.naming,java.net.http,java.prefs,java.rmi,java.scripting,java.security.jgss,java.sql,java.xml,java.datatransfer,jdk.crypto.ec,jdk.unsupported,jdk.charsets,jdk.localedata,jdk.zipfs,jdk.xml.dom" `
     --win-menu `
     --win-shortcut `
     --win-dir-chooser `
+    --win-per-user-install `
     --win-menu-group "Universal QR Sharing"
 
 if ($LASTEXITCODE -ne 0) { throw "jpackage --type exe failed ($LASTEXITCODE)" }

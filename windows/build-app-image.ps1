@@ -8,6 +8,14 @@
     contains UniversalQRSharing.exe plus a bundled JRE, so the installed app needs
     NO separately installed Java/Maven/Node/npm/Docker/Python.
 
+    DESKTOP UI: the EXE launches an EMBEDDED WebView window (JavaFX), NOT an
+    external browser. jpackage keeps the Spring Boot launcher
+    (org.springframework.boot.loader.launch.JarLauncher) as the main class so the
+    nested BOOT-INF/lib classpath (including the bundled JavaFX win-native jars)
+    is wired up first; -DQR_DESKTOP=true then makes QrShareApplication hand off to
+    the DesktopLauncher (embedded WebView host) instead of starting a headless
+    server. No --win-console: this is a true windowed desktop app with no console.
+
     The fat jar must already exist (run windows\build-jar.ps1 first, or pass
     -BuildJar to chain it). Main-Class is the Spring Boot 3.2 launcher
     org.springframework.boot.loader.launch.JarLauncher (confirmed via the jar's
@@ -72,8 +80,9 @@ jpackage `
     --app-version $AppVersion `
     --vendor "Universal QR" `
     --java-options "-Xmx512m" `
-    --add-modules "java.base,java.desktop,java.instrument,java.management,java.naming,java.net.http,java.prefs,java.rmi,java.scripting,java.security.jgss,java.sql,jdk.crypto.ec,jdk.unsupported,jdk.charsets,jdk.localedata,jdk.zipfs" `
-    --win-console
+    --java-options "-DQR_DESKTOP=true" `
+    --java-options "-Djava.awt.headless=false" `
+    --add-modules "java.base,java.desktop,java.instrument,java.management,java.naming,java.net.http,java.prefs,java.rmi,java.scripting,java.security.jgss,java.sql,java.xml,java.datatransfer,jdk.crypto.ec,jdk.unsupported,jdk.charsets,jdk.localedata,jdk.zipfs,jdk.xml.dom"
 
 if ($LASTEXITCODE -ne 0) { throw "jpackage failed ($LASTEXITCODE)" }
 

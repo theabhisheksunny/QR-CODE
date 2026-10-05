@@ -5,7 +5,6 @@ import com.qrshare.dto.FileMetadataResponse;
 import com.qrshare.dto.FileUploadResponse;
 import com.qrshare.exception.FileExpiredException;
 import com.qrshare.exception.FileNotFoundException;
-import com.qrshare.exception.FileTooLargeException;
 import com.qrshare.storage.MetadataStorageService;
 import com.qrshare.storage.SharedFileMetadata;
 import com.qrshare.storage.FileStorageService;
@@ -38,13 +37,10 @@ public class FileShareService {
             throw new IllegalArgumentException("File must not be empty");
         }
 
-        long maxBytes = (long) appProperties.getMaxFileSizeMb() * 1024 * 1024;
-        if (file.getSize() > maxBytes) {
-            throw new FileTooLargeException(
-                "File size " + file.getSize() + " bytes exceeds maximum allowed size of "
-                + appProperties.getMaxFileSizeMb() + " MB");
-        }
-
+        // No artificial size cap: arbitrarily large files are supported. A file
+        // only fails for genuine environmental reasons (disk full, I/O error,
+        // permission denied, cancelled/incomplete upload), which surface as
+        // IOExceptions from the streaming store below.
         String storageKey = UUID.randomUUID().toString();
         String rawToken = tokenUtil.generateToken();
 

@@ -11,7 +11,7 @@ import { useQrHistory } from '../hooks/useQrHistory';
 export const FileQrPage = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [expirationMinutes, setExpirationMinutes] = useState(30);
-  const { state, progress, result, upload, reset } = useFileShare();
+  const { state, progress, loaded, total, result, upload, cancel, reset } = useFileShare();
   const { addEntry } = useQrHistory();
 
   const handleUpload = async () => {
@@ -27,8 +27,15 @@ export const FileQrPage = () => {
         expiresAt: res.expiresAt,
       });
       toast.success('File uploaded successfully!');
-    } catch {
-      toast.error('Upload failed. Please try again.');
+    } catch (err: unknown) {
+      // Cancellation is a user action, not an error toast-worthy failure.
+      const name = (err as { name?: string })?.name;
+      if (name === 'CanceledError' || name === 'AbortError') {
+        toast('Upload cancelled');
+        return;
+      }
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(message || 'Upload failed. Please try again.');
     }
   };
 
@@ -49,7 +56,7 @@ export const FileQrPage = () => {
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex flex-col gap-4">
           <FileUploadZone onFileSelect={setSelectedFile} selectedFile={selectedFile} disabled={uploading} />
           <ExpirationSelector value={expirationMinutes} onChange={setExpirationMinutes} disabled={uploading} />
-          {uploading && <UploadProgress progress={progress} />}
+          {uploading && <UploadProgress progress={progress} loaded={loaded} total={total} onCancel={cancel} />}
           <button
             onClick={handleUpload}
             disabled={!selectedFile || uploading}

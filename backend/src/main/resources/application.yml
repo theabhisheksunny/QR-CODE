@@ -3,12 +3,25 @@ spring:
     name: qr-share
   servlet:
     multipart:
-      max-file-size: ${MAX_FILE_SIZE_MB:25}MB
-      max-request-size: ${MAX_FILE_SIZE_MB:25}MB
+      # No artificial application cap. -1 means "unlimited" to Spring/Tomcat, so
+      # the only real limits are disk space, filesystem, and the OS. A size cap
+      # can still be imposed per-deployment via MAX_FILE_SIZE (e.g. "2GB"), but
+      # the product default is unbounded.
+      max-file-size: ${MAX_FILE_SIZE:-1}
+      max-request-size: ${MAX_REQUEST_SIZE:-1}
+      # Always stream the uploaded part straight to a disk temp file instead of
+      # buffering any portion in memory, so heap stays flat regardless of size.
+      file-size-threshold: 0
 
 server:
   port: ${SERVER_PORT:8787}
   address: 0.0.0.0
+  tomcat:
+    # Do not reject or truncate large request bodies at the connector level.
+    # -1 disables Tomcat's maxSwallowSize (so an aborted/!final request body is
+    # drained cleanly) and removes the 2MB POST cap for multipart uploads.
+    max-swallow-size: -1
+    max-http-form-post-size: -1
 
 app:
   server-port: ${SERVER_PORT:8787}
@@ -17,9 +30,9 @@ app:
     path: ${FILE_STORAGE_PATH:}
   metadata-storage-path: ${METADATA_STORAGE_PATH:}
   default-expiration-minutes: ${DEFAULT_EXPIRATION_MINUTES:30}
-  max-file-size-mb: ${MAX_FILE_SIZE_MB:25}
   cleanup-interval-ms: ${CLEANUP_INTERVAL_MS:60000}
   allowed-origins: ${ALLOWED_ORIGINS:*}
+  auto-open-browser: ${AUTO_OPEN_BROWSER:true}
 
 management:
   endpoints:

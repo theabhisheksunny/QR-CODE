@@ -26,6 +26,17 @@ import java.util.Locale;
 public class RuntimePaths {
 
     private static final String APP_DIR_NAME = "UniversalQRSharing";
+    /**
+     * Windows data-root folder name. Deliberately DISTINCT from
+     * {@link #APP_DIR_NAME} so persistent user data never shares a directory
+     * with the installed binaries. The per-user jpackage installer places
+     * binaries in {@code %LOCALAPPDATA%\UniversalQRSharing}; if data lived there
+     * too, uninstalling the app would delete the user's shares/config/logs.
+     * Keeping data in {@code %LOCALAPPDATA%\UniversalQRSharing-Data} makes an
+     * uninstall (which removes only the binary folder) data-safe, and lets an
+     * upgrade preserve everything.
+     */
+    private static final String WIN_DATA_DIR_NAME = "UniversalQRSharing-Data";
 
     private final Path dataRoot;
 
@@ -69,7 +80,7 @@ public class RuntimePaths {
             Path base = (localAppData != null && !localAppData.isBlank())
                 ? Path.of(localAppData.trim())
                 : Path.of(userHome, "AppData", "Local");
-            return base.resolve(APP_DIR_NAME);
+            return base.resolve(WIN_DATA_DIR_NAME);
         }
 
         if (osName.contains("mac") || osName.contains("darwin")) {
