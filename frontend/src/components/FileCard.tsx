@@ -5,6 +5,8 @@ import { FileUploadResponse } from '../types';
 import { QrDisplay } from './QrDisplay';
 import { formatFileSize, formatCountdown, isExpired } from '../utils/format';
 import { deleteFile } from '../api/files';
+import { copyText } from '../utils/clipboard';
+import { shareDownloadUrl, triggerDownload } from '../services/download';
 
 interface FileCardProps {
   file: FileUploadResponse;
@@ -15,6 +17,7 @@ export const FileCard = ({ file, onDeleted }: FileCardProps) => {
   const [countdown, setCountdown] = useState(formatCountdown(file.expiresAt));
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -24,14 +27,26 @@ export const FileCard = ({ file, onDeleted }: FileCardProps) => {
   }, [file.expiresAt]);
 
   const handleCopyLink = async () => {
-    await navigator.clipboard.writeText(file.shareUrl);
-    setCopied(true);
-    toast.success('Link copied!');
-    setTimeout(() => setCopied(false), 2000);
+    const ok = await copyText(file.shareUrl);
+    if (ok) {
+      setCopied(true);
+      toast.success('Link copied!');
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      toast.error('Unable to copy');
+    }
+  };
+
+  // Token for the dedicated download endpoint (same extraction SharePage uses).
+  const fileToken = file.shareUrl?.split('/share/')[1] ?? file.id;
+
+  const handleDownload = async () => {
+    const res = await triggerDownload(shareDownloadUrl(fileToken), file.originalFileName);
+    if (res.ok) toast.success(res.path ? `Saved to ${res.path}` : 'Saved successfully');
+    else toast.error('Download failed');
   };
 
   const handleDelete = async () => {
-    if (!confirm('Delete this file?')) return;
     setDeleting(true);
     try {
       await deleteFile(file.id);
@@ -40,6 +55,7 @@ export const FileCard = ({ file, onDeleted }: FileCardProps) => {
     } catch {
       toast.error('Failed to delete file');
       setDeleting(false);
+      setConfirmingDelete(false);
     }
   };
 
@@ -63,7 +79,7 @@ export const FileCard = ({ file, onDeleted }: FileCardProps) => {
           {expired ? 'Expired' : countdown}
         </div>
       </div>
-      <QrDisplay qrCode={file.qrCode} value={file.shareUrl} label="SHARE URL" filename={file.originalFileName} />
+      <QrDisplay qrCode={file.qrCode} value={file.shareUrl} label="SHARE URL" filename={file.originalFileName} copyLabel="Copy Link" />
       <div className="flex flex-wrap gap-2">
         <button
           onClick={handleCopyLink}
@@ -72,22 +88,41 @@ export const FileCard = ({ file, onDeleted }: FileCardProps) => {
           {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
           Copy Link
         </button>
-        <a
-          href={`/api/files/share/${file.shareUrl?.split('/share/')[1] ?? file.id}`}
-          download={file.originalFileName}
-          className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg transition-colors"
+        <button
+          onClick={handleDownload}
+          disabled={expired}
+          className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
         >
           <Download className="w-4 h-4" />
           Download
-        </a>
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          className="flex items-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-        >
-          <Trash2 className="w-4 h-4" />
-          Delete File
         </button>
+        {!confirmingDelete ? (
+          <button
+            onClick={() => setConfirmingDelete(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 text-sm font-medium rounded-lg transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete File
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-red-600 dark:text-red-400">Delete this file?</span>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="px-2.5 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg"
+            >
+              {deleting ? 'Deleting…' : 'Confirm'}
+            </button>
+            <button
+              onClick={() => setConfirmingDelete(false)}
+              disabled={deleting}
+              className="px-2.5 py-2 text-sm font-medium bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-300 rounded-lg"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
       {file.downloadCount > 0 && (
         <p className="text-xs text-gray-400 dark:text-gray-500">Downloaded {file.downloadCount} time{file.downloadCount !== 1 ? 's' : ''}</p>

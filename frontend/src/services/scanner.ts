@@ -55,6 +55,7 @@ export const scan = async (): Promise<string> => {
 
 export type ParsedScan =
   | { kind: 'share'; token: string; baseUrl: string; raw: string }
+  | { kind: 'room'; token: string; baseUrl: string; raw: string }
   | { kind: 'url'; url: string; raw: string }
   | { kind: 'json'; value: unknown; raw: string }
   | { kind: 'number'; value: number; raw: string }
@@ -65,6 +66,8 @@ export type ParsedScan =
  *
  * - share  : a Universal QR share URL http://<ip>:<port>/share/<token>
  *            -> the app should set the host base + open the in-app share view.
+ * - room    : a Universal QR room URL http://<ip>:<port>/room/<token>
+ *            -> set the host base + open the room join view.
  * - url     : any other http(s) URL -> offer to the system browser.
  * - json    : parseable JSON object/array -> display.
  * - number  : a plain numeric value -> display.
@@ -82,11 +85,20 @@ export const parseScan = (raw: string): ParsedScan => {
   }
 
   if (parsedUrl && (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:')) {
-    const shareMatch = parsedUrl.pathname.match(/^\/share\/([^/]+)\/?$/);
+    const shareMatch = parsedUrl.pathname.match(/^\/share\/([A-Za-z0-9_-]+)\/?$/);
     if (shareMatch) {
       return {
         kind: 'share',
         token: decodeURIComponent(shareMatch[1]),
+        baseUrl: parsedUrl.origin,
+        raw: trimmed,
+      };
+    }
+    const roomMatch = parsedUrl.pathname.match(/^\/room\/([A-Za-z0-9_-]+)\/?$/);
+    if (roomMatch) {
+      return {
+        kind: 'room',
+        token: decodeURIComponent(roomMatch[1]),
         baseUrl: parsedUrl.origin,
         raw: trimmed,
       };
@@ -109,4 +121,38 @@ export const parseScan = (raw: string): ParsedScan => {
   }
 
   return { kind: 'text', raw: trimmed };
+};
+
+/**
+ * The ONLY QR shapes the application will act on by navigating. Anything else
+ * is reported as unsupported — the scanner is NOT a generic URL launcher
+ * (directive #6). A `host` is included so callers can repoint the API client at
+ * the device that produced the QR (LAN host).
+ */
+export type QrRoute =
+  | { kind: 'direct-share'; token: string; host: string; raw: string }
+  | { kind: 'room'; token: string; host: string; raw: string }
+  | { kind: 'unsupported'; raw: string; reason: string };
+
+/**
+ * Shared QR route resolver used by every platform (web webcam, Windows EXE
+ * webcam bridge, Android ML Kit). Accepts ONLY the application's own
+ * {@code /share/<token>} and {@code /room/<token>} URL patterns over http(s);
+ * every other QR (arbitrary URLs, text, etc.) resolves to `unsupported` so the
+ * scanner never performs arbitrary navigation.
+ */
+export const resolveQrRoute = (raw: string): QrRoute => {
+  const parsed = parseScan(raw);
+  switch (parsed.kind) {
+    case 'share':
+      return { kind: 'direct-share', token: parsed.token, host: parsed.baseUrl, raw: parsed.raw };
+    case 'room':
+      return { kind: 'room', token: parsed.token, host: parsed.baseUrl, raw: parsed.raw };
+    default:
+      return {
+        kind: 'unsupported',
+        raw: raw.trim(),
+        reason: 'Not a Universal QR Sharing code (expected a /share or /room link).',
+      };
+  }
 };

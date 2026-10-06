@@ -1,5 +1,8 @@
 package com.qrshare.service;
 
+import com.qrshare.room.Room;
+import com.qrshare.room.RoomService;
+import com.qrshare.room.RoomStore;
 import com.qrshare.storage.MetadataStorageService;
 import com.qrshare.storage.SharedFileMetadata;
 import com.qrshare.storage.FileStorageService;
@@ -19,6 +22,8 @@ public class CleanupService {
 
     private final MetadataStorageService metadataStorageService;
     private final FileStorageService fileStorageService;
+    private final RoomStore roomStore;
+    private final RoomService roomService;
 
     /** Epoch seconds of the last cleanup run; 0 until the first run completes. */
     private final AtomicLong lastRunEpoch = new AtomicLong(0L);
@@ -52,5 +57,25 @@ public class CleanupService {
         }
 
         log.info("Cleanup: removed {} expired file(s)", expired.size());
+    }
+
+    /** Removes expired rooms (and their stored files) on the same schedule. */
+    @Scheduled(fixedRateString = "${app.cleanup-interval-ms:60000}")
+    public void cleanupExpiredRooms() {
+        Instant now = Instant.now();
+        List<Room> expiredRooms = roomStore.findExpired(now);
+        if (expiredRooms.isEmpty()) {
+            return;
+        }
+        log.info("Cleanup: found {} expired room(s)", expiredRooms.size());
+        for (Room r : expiredRooms) {
+            try {
+                roomService.purge(r);
+                log.debug("Cleanup: purged expired room id={}", r.getId());
+            } catch (Exception e) {
+                log.warn("Cleanup: could not purge room id={}: {}", r.getId(), e.getMessage());
+            }
+        }
+        log.info("Cleanup: removed {} expired room(s)", expiredRooms.size());
     }
 }

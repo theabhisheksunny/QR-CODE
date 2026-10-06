@@ -7,6 +7,10 @@ import { FileQrPage } from './pages/FileQrPage';
 import { SharePage } from './pages/SharePage';
 import { HistoryPage } from './pages/HistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { RoomCreatePage } from './pages/RoomCreatePage';
+import { RoomPage } from './pages/RoomPage';
+import { ScanPage } from './pages/ScanPage';
+import { PastePage } from './pages/PastePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 export default function App() {
@@ -25,6 +29,10 @@ export default function App() {
           <Route path="/text" element={<TextQrPage />} />
           <Route path="/file" element={<FileQrPage />} />
           <Route path="/share/:token" element={<SharePage />} />
+          <Route path="/room" element={<RoomCreatePage />} />
+          <Route path="/room/:token" element={<RoomPage />} />
+          <Route path="/scan" element={<ScanPage />} />
+          <Route path="/paste" element={<PastePage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFoundPage />} />

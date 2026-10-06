@@ -54,6 +54,7 @@ public class RuntimePaths {
         createDir(filesDir());
         createDir(tempDir());
         createDir(metadataDir());
+        createDir(roomsDir());
         createDir(logsDir());
         createDir(configDir());
     }
@@ -109,6 +110,11 @@ public class RuntimePaths {
 
     public Path metadataDir() {
         return dataRoot.resolve("storage").resolve("metadata");
+    }
+
+    /** Per-room JSON documents for the Local Sharing Room feature. */
+    public Path roomsDir() {
+        return dataRoot.resolve("rooms");
     }
 
     public Path logsDir() {

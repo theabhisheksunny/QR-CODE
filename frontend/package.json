@@ -10,18 +10,20 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor-mlkit/barcode-scanning": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "axios": "^1.6.2",
+    "jsqr": "^1.4.0",
+    "lucide-react": "^0.294.0",
+    "pdfjs-dist": "3.11.174",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.20.0",
-    "axios": "^1.6.2",
-    "lucide-react": "^0.294.0",
     "react-hot-toast": "^2.4.1",
-    "@capacitor/core": "^7.0.0",
-    "@capacitor-mlkit/barcode-scanning": "^7.0.0"
+    "react-router-dom": "^6.20.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "^7.0.0",
     "@capacitor/android": "^7.0.0",
+    "@capacitor/cli": "^7.0.0",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
     "@typescript-eslint/eslint-plugin": "^6.10.0",
@@ -31,6 +33,7 @@
     "eslint": "^8.53.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.4",
+    "pngjs": "^7.0.0",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5",
     "typescript": "^5.2.2",

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Wifi, Copy, Check } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { getNetworkInfo } from '../api/network';
 import { NetworkInfo } from '../types';
+import { copyText } from '../utils/clipboard';
 
 export const NetworkStatusBar = () => {
   const [networkInfo, setNetworkInfo] = useState<NetworkInfo | null>(null);
@@ -17,13 +19,13 @@ export const NetworkStatusBar = () => {
   }, []);
 
   const handleCopy = async () => {
-    if (!networkInfo) return;
-    try {
-      await navigator.clipboard.writeText(networkInfo.shareBaseUrl);
+    if (!networkInfo?.shareBaseUrl) return;
+    const ok = await copyText(networkInfo.shareBaseUrl);
+    if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // clipboard not available, silently ignore
+    } else {
+      toast.error('Unable to copy');
     }
   };
 

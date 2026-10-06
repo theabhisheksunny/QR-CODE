@@ -1,10 +1,20 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { Download, AlertCircle, Loader2, Clock } from 'lucide-react';
+import { Download, AlertCircle, Loader2, Clock, Eye } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { getShareMetadata } from '../api/files';
 import { FileMetadataResponse } from '../types';
 import { FilePreview } from '../components/FilePreview';
 import { formatFileSize, formatCountdown, isExpired } from '../utils/format';
+import { shareDownloadUrl, triggerDownload } from '../services/download';
+import { establishFromCurrentUrl } from '../services/apiBase';
+
+/** Types the app can preview inline (embedded viewer / player). */
+const isPreviewable = (contentType: string): boolean => {
+  const t = (contentType || '').toLowerCase();
+  return t.startsWith('image/') || t.startsWith('video/') || t.startsWith('audio/')
+    || t === 'application/pdf' || t.startsWith('text/');
+};
 
 export const SharePage = () => {
   const { token } = useParams<{ token: string }>();
@@ -12,6 +22,8 @@ export const SharePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [countdown, setCountdown] = useState('');
+  const [showPreview, setShowPreview] = useState(false);
+  const [downloadMsg, setDownloadMsg] = useState('');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchMetadata = async () => {
@@ -28,6 +40,9 @@ export const SharePage = () => {
   };
 
   useEffect(() => {
+    // Authoritative host rule: the host of THIS /share/<token> URL owns the API
+    // base (web/desktop), overriding any stale stored value.
+    establishFromCurrentUrl();
     fetchMetadata();
     intervalRef.current = setInterval(fetchMetadata, 30000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
@@ -89,17 +104,40 @@ export const SharePage = () => {
           </div>
         </div>
         {!expired && (
-          <a
-            href={`/api/files/share/${fileToken}`}
-            download={metadata.originalFileName}
-            className="mt-4 flex items-center justify-center gap-2 w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            Download File
-          </a>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {isPreviewable(metadata.contentType) && (
+              <button
+                onClick={() => setShowPreview((v) => !v)}
+                className="flex items-center justify-center gap-2 flex-1 min-w-[8rem] py-3 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-800 dark:text-gray-200 font-semibold rounded-xl transition-colors"
+              >
+                <Eye className="w-4 h-4" />
+                {showPreview ? 'Hide Preview' : 'Preview'}
+              </button>
+            )}
+            <button
+              onClick={async () => {
+                setDownloadMsg('Starting…');
+                const res = await triggerDownload(shareDownloadUrl(fileToken), metadata.originalFileName);
+                if (res.ok) {
+                  setDownloadMsg(res.path ? `Saved to ${res.path}` : 'Saved successfully');
+                  toast.success('Saved successfully');
+                } else {
+                  setDownloadMsg(res.ok ? res.message : 'Download failed');
+                  toast.error('Download failed');
+                }
+              }}
+              className="flex items-center justify-center gap-2 flex-1 min-w-[8rem] py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              Download File
+            </button>
+          </div>
+        )}
+        {downloadMsg && (
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 break-all whitespace-pre-wrap">{downloadMsg}</p>
         )}
       </div>
-      {!expired && token && (
+      {!expired && token && showPreview && isPreviewable(metadata.contentType) && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
           <h2 className="font-semibold text-gray-800 dark:text-gray-200 mb-4">Preview</h2>
           <FilePreview token={token} contentType={metadata.contentType} fileName={metadata.originalFileName} />

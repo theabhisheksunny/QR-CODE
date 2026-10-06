@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { QrCode, Trash2, Clock, ExternalLink } from 'lucide-react';
 import { useQrHistory } from '../hooks/useQrHistory';
 import { formatCountdown, isExpired } from '../utils/format';
 
 export const HistoryPage = () => {
   const { history, removeEntry, clearHistory } = useQrHistory();
+  const [confirmingClear, setConfirmingClear] = useState(false);
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-6">
@@ -12,13 +14,30 @@ export const HistoryPage = () => {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">History</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">{history.length} item{history.length !== 1 ? 's' : ''}</p>
         </div>
-        {history.length > 0 && (
+        {history.length > 0 && !confirmingClear && (
           <button
-            onClick={() => { if (confirm('Clear all history?')) clearHistory(); }}
+            onClick={() => setConfirmingClear(true)}
             className="text-sm text-red-500 hover:text-red-600 font-medium"
           >
             Clear All
           </button>
+        )}
+        {confirmingClear && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-red-600 dark:text-red-400">Clear all history?</span>
+            <button
+              onClick={() => { clearHistory(); setConfirmingClear(false); }}
+              className="px-2.5 py-1 text-xs font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg"
+            >
+              Confirm
+            </button>
+            <button
+              onClick={() => setConfirmingClear(false)}
+              className="px-2.5 py-1 text-xs font-medium bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-300 rounded-lg"
+            >
+              Cancel
+            </button>
+          </div>
         )}
       </div>
       {history.length === 0 ? (

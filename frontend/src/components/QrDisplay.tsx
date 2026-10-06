@@ -1,15 +1,17 @@
 import { Download, Copy, Check } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { copyText } from '../utils/clipboard';
 
 interface QrDisplayProps {
   qrCode: string;
   value?: string;
   label?: string;
   filename?: string;
+  copyLabel?: string;
 }
 
-export const QrDisplay = ({ qrCode, value, label, filename = 'qr-code' }: QrDisplayProps) => {
+export const QrDisplay = ({ qrCode, value, label, filename = 'qr-code', copyLabel = 'Copy Value' }: QrDisplayProps) => {
   const [copied, setCopied] = useState(false);
 
   // Backend may return raw base64 without the data URI prefix
@@ -25,10 +27,14 @@ export const QrDisplay = ({ qrCode, value, label, filename = 'qr-code' }: QrDisp
 
   const handleCopy = async () => {
     if (!value) return;
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    toast.success('Copied to clipboard');
-    setTimeout(() => setCopied(false), 2000);
+    const ok = await copyText(value);
+    if (ok) {
+      setCopied(true);
+      toast.success('Copied to clipboard');
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      toast.error('Unable to copy');
+    }
   };
 
   return (
@@ -55,7 +61,7 @@ export const QrDisplay = ({ qrCode, value, label, filename = 'qr-code' }: QrDisp
             className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg transition-colors"
           >
             {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-            {copied ? 'Copied!' : 'Copy Value'}
+            {copied ? 'Copied!' : copyLabel}
           </button>
         )}
       </div>

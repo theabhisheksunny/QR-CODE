@@ -44,6 +44,22 @@ A person **receiving** a QR share never needs the app installed — they scan wi
 a normal phone camera and open the LAN share URL in any browser. The host (Web,
 Windows, or Android) and the remote scanner are independent concerns.
 
+Every mode supports **both directions** — Send/Share **and** Scan/Receive:
+
+| Capability | Web | Windows EXE | Android APK |
+| --- | --- | --- | --- |
+| Generate file/text/room QR | ✅ | ✅ | ✅ |
+| **Scan QR** (camera) | `BarcodeDetector` where available | **native webcam** (webcam-capture + ZXing) | native **ML Kit** |
+| Routes `/share/<token>` → file page | ✅ | ✅ | ✅ |
+| Routes `/room/<token>` → room join | ✅ | ✅ | ✅ |
+
+Scanning uses one **shared QR route resolver** (`resolveQrRoute`): it accepts
+**only** the app's own `/share/<token>` and `/room/<token>` URLs and rejects any
+other QR with "Unsupported QR code" — the scanner is never a generic URL
+launcher. The Windows desktop opens a **native webcam window** (the JavaFX
+WebView has no `getUserMedia`), decodes with the bundled ZXing, and bridges the
+result into the same React routing.
+
 Final release artifacts:
 
 ```
@@ -90,6 +106,83 @@ What each wrapper does:
 > see [android/BUILD-ANDROID.md](android/BUILD-ANDROID.md). The lower-level
 > scripts (`build-jar.ps1`, `build-app-image.ps1`, `build-installer.ps1`) remain
 > available if you want each step individually.
+
+---
+
+## Local Sharing Rooms (multi-device)
+
+Alongside one-off **Quick Share**, the app can host a **Local Sharing Room**: a
+multi-device room where everyone on the same Wi-Fi joins from a plain browser
+and can both upload and download files. All transfers relay through the host
+(Device A) — there is **no** peer-to-peer/WebRTC and **no** internet dependency.
+
+```
+                         DEVICE A
+                  Universal QR Sharing (Web / Windows EXE / Android)
+                       = ROOM SERVER + STORAGE
+                           │
+                     Same LAN / Wi-Fi / hotspot
+                           │
+            ┌──────────────┼──────────────┐
+            ▼              ▼              ▼
+        DEVICE B       DEVICE C       DEVICE D
+        Browser        Browser        Browser   (no app required)
+            │              │              │
+            └──────────────┼──────────────┘
+                           ▼
+         every transfer routes THROUGH Device A:
+            B ──upload──► A ──download──► C
+            C ──upload──► A ──download──► B
+```
+
+How it works:
+
+1. **Device A** runs Universal QR Sharing (web, Windows EXE, or Android) and
+   chooses **Create Room** (name + expiration).
+2. Device A shows a **Room QR** encoding a LAN URL like
+   `http://192.168.1.25:8787/room/<secure-room-token>` (never localhost).
+3. **Other devices scan the Room QR** with a normal phone camera and open the
+   URL in **any browser** — no app, no account, no internet.
+4. Each visitor enters a name and **joins**; they receive a secure session token.
+5. **Any participant can upload**; the file streams to Device A and appears in
+   the room's shared-file list for **everyone** to download.
+6. **Any participant can download** any room file (streaming + HTTP Range, so
+   large videos seek and resume).
+7. **Device A must stay running** — it is the room server and storage hub. If it
+   stops, the room is unavailable; when it restarts, an unexpired room (and its
+   files) reloads from disk and persisted sessions still authorize.
+8. The host can **Close Room** at any time, which removes the room's files and
+   disconnects participants. Rooms also auto-expire via the existing cleanup job.
+
+Reuse, not duplication: rooms reuse the **same** streaming upload/download
+(bounded memory, any size, any extension), the **same** secure token generation,
+the **same** QR service, the **same** LAN-IP detection, and the **same** local
+JSON storage model — the direct Quick Share flow is unchanged.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/rooms` | Create a room (returns room token, LAN URL, QR) |
+| `GET` | `/api/rooms/{roomToken}` | Public room info (join screen) |
+| `POST` | `/api/rooms/{roomToken}/join` | Join; returns a secure session token |
+| `POST` | `/api/rooms/{roomToken}/heartbeat` | Refresh presence (`X-Room-Session`) |
+| `GET` | `/api/rooms/{roomToken}/participants` | List participants + online count |
+| `POST` | `/api/rooms/{roomToken}/files` | Upload a file (streaming, `X-Room-Session`) |
+| `GET` | `/api/rooms/{roomToken}/files` | List room files (`X-Room-Session`) |
+| `GET` | `/api/rooms/{roomToken}/files/{fileToken}` | Download a room file (Range) |
+| `DELETE` | `/api/rooms/{roomToken}/files/{fileToken}` | Remove a room file |
+| `POST` | `/api/rooms/{roomToken}/close` | Close the room and purge its files |
+
+Room data lives under the same runtime-aware data root as everything else
+(`%LOCALAPPDATA%\UniversalQRSharing-Data\rooms\` on Windows); file blobs stay in
+`storage/files/` with random storage keys (never the original filename, never a
+path). Participant session tokens and room tokens are cryptographically random.
+Cross-room access is rejected, and expired/closed rooms reject all access.
+
+> **Network note.** The room works on normal Wi-Fi and on a Device-A hotspot
+> *where the OS allows client-to-client traffic*. Some phone hotspots and
+> "guest"/AP-isolation Wi-Fi block device-to-device connections; if a browser
+> cannot reach Device A, that isolation is the cause (the app does not and will
+> not disable your firewall).
 
 ## Quick Start (Local Development)
 

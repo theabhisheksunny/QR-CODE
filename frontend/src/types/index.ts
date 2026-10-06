@@ -64,3 +64,56 @@ export interface NetworkInfo {
   shareBaseUrl: string;
   allInterfaces: NetworkInterfaceInfo[];
 }
+
+// ---- Local Sharing Room ----------------------------------------------------
+
+export interface CreateRoomResponse {
+  roomToken: string;
+  name: string;
+  createdAt: string;
+  expiresAt: string;
+  status: string;
+  roomUrl: string;
+  qrCode: string;
+}
+
+export interface RoomInfoResponse {
+  roomToken: string;
+  name: string;
+  createdAt: string;
+  expiresAt: string;
+  status: string;
+  participantCount: number;
+  roomUrl: string;
+}
+
+export interface JoinResponse {
+  participantId: string;
+  sessionToken: string;
+  displayName: string;
+  roomName: string;
+  expiresAt: string;
+}
+
+export interface RoomParticipant {
+  id: string;
+  displayName: string;
+  status: 'ONLINE' | 'OFFLINE';
+  joinedAt: string;
+  lastSeenAt: string;
+}
+
+export interface ParticipantList {
+  onlineCount: number;
+  participants: RoomParticipant[];
+}
+
+export interface RoomFile {
+  fileToken: string;
+  originalFileName: string;
+  contentType: string;
+  fileSize: number;
+  ownerParticipantId: string;
+  ownerDisplayName: string;
+  createdAt: string;
+}

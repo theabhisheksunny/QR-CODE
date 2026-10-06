@@ -51,7 +51,7 @@ export const FileUploadZone = ({ onFileSelect, selectedFile, disabled }: FileUpl
             <p className="font-medium text-gray-700 dark:text-gray-300">Drag &amp; drop a file here</p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">or click to browse</p>
           </div>
-          <p className="text-xs text-gray-400 dark:text-gray-500">Any file type • Max 25 MB</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500">Any file type • Any size</p>
           <input type="file" className="hidden" onChange={handleChange} disabled={disabled} />
         </label>
       )}

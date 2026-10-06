@@ -88,6 +88,17 @@
       <artifactId>javase</artifactId>
       <version>3.5.2</version>
     </dependency>
+
+    <!-- Native webcam capture for the Windows desktop QR scanner. JavaFX WebView
+         (WebKit) does not implement getUserMedia, so the desktop host captures
+         frames natively and decodes them with the ZXing dependency above, then
+         bridges the decoded URL into the React UI. webcam-capture bundles its
+         own native bridge (bridj) and is Windows/macOS/Linux-capable. -->
+    <dependency>
+      <groupId>com.github.sarxos</groupId>
+      <artifactId>webcam-capture</artifactId>
+      <version>0.3.12</version>
+    </dependency>
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>

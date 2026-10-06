@@ -2,16 +2,15 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScanLine, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { scan, parseScan, isScannerSupported } from '../services/scanner';
+import { scan, resolveQrRoute, isScannerSupported } from '../services/scanner';
 
 /**
- * Native-only Scan button. Renders nothing on the web build (desktop/dev),
- * so the SAME React UI is reused across platforms without a second app.
- *
- * On a successful scan the raw value is classified by parseScan() and routed:
- * - share URL  -> store the host as the API base + open the in-app share view
- * - plain URL  -> hand off to the system browser
- * - json/number/text -> surface the decoded value to the user
+ * Native-only Scan button (Android/iOS via ML Kit). Renders nothing on the web
+ * build, where the camera scanner lives on the /scan page using BarcodeDetector.
+ * The decoded value is classified by the SHARED resolveQrRoute() and routed:
+ * - direct-share -> set API host + open /share/<token>
+ * - room         -> set API host + open /room/<token>
+ * - unsupported  -> "Unsupported QR code" (no navigation)
  */
 const BASE_URL_KEY = 'qrshare_api_base_url';
 
@@ -19,7 +18,6 @@ export const ScanQrButton = () => {
   const navigate = useNavigate();
   const [scanning, setScanning] = useState(false);
 
-  // Reuse the SAME UI everywhere; the scanner is a native-only capability.
   if (!isScannerSupported()) {
     return null;
   }
@@ -28,32 +26,18 @@ export const ScanQrButton = () => {
     setScanning(true);
     try {
       const raw = await scan();
-      const result = parseScan(raw);
+      const route = resolveQrRoute(raw);
 
-      switch (result.kind) {
-        case 'share':
-          // Point the shared API client at the host that produced this QR,
-          // then open the existing in-app share flow — no duplicated logic.
-          localStorage.setItem(BASE_URL_KEY, result.baseUrl);
-          toast.success('Opening shared file');
-          navigate(`/share/${result.token}`);
-          break;
-        case 'url':
-          window.open(result.url, '_blank', 'noopener,noreferrer');
-          break;
-        case 'json':
-          toast.success('Scanned JSON');
-          navigate('/text', { state: { scanned: JSON.stringify(result.value, null, 2) } });
-          break;
-        case 'number':
-          toast.success(`Scanned number: ${result.value}`);
-          navigate('/text', { state: { scanned: result.raw } });
-          break;
-        case 'text':
-        default:
-          toast.success('Scanned text');
-          navigate('/text', { state: { scanned: result.raw } });
-          break;
+      if (route.kind === 'direct-share') {
+        localStorage.setItem(BASE_URL_KEY, route.host);
+        toast.success('Opening shared file');
+        navigate(`/share/${route.token}`);
+      } else if (route.kind === 'room') {
+        localStorage.setItem(BASE_URL_KEY, route.host);
+        toast.success('Opening room');
+        navigate(`/room/${route.token}`);
+      } else {
+        toast.error('Unsupported QR code');
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to scan QR code.';
