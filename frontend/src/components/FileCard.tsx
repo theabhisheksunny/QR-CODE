@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Copy, Trash2, Check, Clock, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { FileUploadResponse } from '../types';
@@ -18,12 +18,16 @@ export const FileCard = ({ file, onDeleted }: FileCardProps) => {
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCountdown(formatCountdown(file.expiresAt));
     }, 1000);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      clearTimeout(copyTimerRef.current);
+    };
   }, [file.expiresAt]);
 
   const handleCopyLink = async () => {
@@ -31,7 +35,8 @@ export const FileCard = ({ file, onDeleted }: FileCardProps) => {
     if (ok) {
       setCopied(true);
       toast.success('Link copied!');
-      setTimeout(() => setCopied(false), 2000);
+      clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
     } else {
       toast.error('Unable to copy');
     }

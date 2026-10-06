@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Wifi, Copy, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getNetworkInfo } from '../api/network';
@@ -10,12 +10,18 @@ export const NetworkStatusBar = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
+    let active = true;
     getNetworkInfo()
-      .then(setNetworkInfo)
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .then((info) => { if (active) setNetworkInfo(info); })
+      .catch(() => { if (active) setError(true); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => {
+      active = false;
+      clearTimeout(copyTimerRef.current);
+    };
   }, []);
 
   const handleCopy = async () => {
@@ -23,7 +29,8 @@ export const NetworkStatusBar = () => {
     const ok = await copyText(networkInfo.shareBaseUrl);
     if (ok) {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
     } else {
       toast.error('Unable to copy');
     }

@@ -53,7 +53,7 @@ export const SharePage = () => {
     if (!metadata) return;
     const timer = setInterval(() => setCountdown(formatCountdown(metadata.expiresAt)), 1000);
     return () => clearInterval(timer);
-  }, [metadata]);
+  }, [metadata?.expiresAt]);
 
   if (loading) {
     return (

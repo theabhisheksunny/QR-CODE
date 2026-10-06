@@ -66,26 +66,29 @@ export const PdfViewer = ({ url, fileName, onDownload }: PdfViewerProps) => {
     };
   }, [url, reloadKey]);
 
-  // --- Render all pages whenever the doc is ready or the scale changes ---
+  // --- Render pages progressively (first page fast, rest with yields) ---
+  const renderGenRef = useRef(0); // incremented on every new render pass to cancel stale ones
+
   const renderPages = useCallback(async () => {
     const doc = docRef.current;
     const container = containerRef.current;
     if (!doc || !container) return;
     container.innerHTML = '';
 
+    const gen = ++renderGenRef.current; // snapshot; if it changes, a new pass started
     for (let pageNum = 1; pageNum <= doc.numPages; pageNum++) {
+      if (renderGenRef.current !== gen) return; // cancelled (scale changed or unmount)
       let page;
       try {
         page = await doc.getPage(pageNum);
       } catch {
-        continue; // skip a page that fails rather than failing the whole doc
+        continue;
       }
+      if (renderGenRef.current !== gen) return;
       const viewport = page.getViewport({ scale });
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) continue;
-      // Account for device pixel ratio for crisp rendering, capped to avoid
-      // excessive memory on very high-DPI screens.
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.floor(viewport.width * dpr);
       canvas.height = Math.floor(viewport.height * dpr);
@@ -96,8 +99,15 @@ export const PdfViewer = ({ url, fileName, onDownload }: PdfViewerProps) => {
       container.appendChild(canvas);
       try {
         await page.render({ canvasContext: ctx, viewport }).promise;
-      } catch {
-        /* render of a single page failed; leave the (blank) canvas in place */
+      } catch { /* single page failed; blank canvas remains */ }
+      // Yield to the event loop after the first page so the UI stays responsive.
+      // The first page renders without delay; subsequent pages yield via a 0ms
+      // setTimeout to let React, scrolling, and user interaction proceed.
+      if (pageNum === 1 && doc.numPages > 1) {
+        await new Promise(r => setTimeout(r, 0));
+      } else if (pageNum > 1 && pageNum % 2 === 0) {
+        // Yield every 2 pages after the first to balance throughput vs responsiveness.
+        await new Promise(r => setTimeout(r, 0));
       }
     }
   }, [scale]);

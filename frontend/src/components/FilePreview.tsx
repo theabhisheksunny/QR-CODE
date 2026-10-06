@@ -1,9 +1,14 @@
-import { useState, useEffect } from 'react';
-import { FileText } from 'lucide-react';
+import { useState, useEffect, Suspense, lazy } from 'react';
+import { FileText, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getMimeCategory } from '../utils/format';
 import { sharePreviewUrl, triggerDownload } from '../services/download';
-import { PdfViewer } from './PdfViewer';
+
+// LAZY LOAD: PdfViewer (and its pdfjs-dist dependency, ~470 KB) is only fetched
+// when a user actually opens a PDF preview. On every other page the main bundle
+// is ~458 KB instead of ~924 KB. Vite automatically code-splits the dynamic
+// import into a separate chunk + the pdf.worker asset.
+const PdfViewer = lazy(() => import('./PdfViewer').then(m => ({ default: m.PdfViewer })));
 
 /**
  * Inline file viewer reused by BOTH Quick Share and Local Sharing Rooms.
@@ -13,22 +18,13 @@ import { PdfViewer } from './PdfViewer';
  *   - `src`    → an already-built inline URL (e.g. a room file preview URL
  *                `/api/rooms/{roomToken}/files/{fileToken}`).
  *
- * The viewer logic (image/video/audio/pdf/text) lives here ONCE; room cards
- * simply pass the room preview URL as `src`. The backend base GET endpoint
- * streams inline (content-type-aware Content-Disposition) with Range support,
- * so large media stream and seek correctly.
- *
- * PDF is rendered by the shared PDF.js-based {@link PdfViewer}, which works
- * inside a normal browser AND the embedded JavaFX / Android WebViews (none of
- * which can render a raw PDF via an <iframe> reliably). image/video/audio/text
- * continue to use native HTML elements that render in every WebView.
+ * image/video/audio/text use native HTML elements (work in every WebView).
+ * PDF uses the lazy-loaded PDF.js canvas renderer (works in every WebView).
  */
 interface FilePreviewProps {
   contentType: string;
   fileName: string;
-  /** Quick Share access token (mutually exclusive with `src`). */
   token?: string;
-  /** Pre-built inline URL (mutually exclusive with `token`). */
   src?: string;
 }
 
@@ -65,18 +61,23 @@ export const FilePreview = ({ token, src, contentType, fileName }: FilePreviewPr
     return <audio src={fileUrl} controls className="w-full" />;
   }
   if (category === 'pdf') {
-    // Embedded PDF.js renderer — works on web, Windows WebView, Android WebView.
-    // Downloads reuse the app's existing platform-aware download flow.
     return (
-      <PdfViewer
-        url={fileUrl}
-        fileName={fileName}
-        onDownload={async () => {
-          const res = await triggerDownload(fileUrl, fileName);
-          if (res.ok) toast.success(res.path ? `Saved to ${res.path}` : 'Saved successfully');
-          else toast.error('Download failed');
-        }}
-      />
+      <Suspense fallback={
+        <div className="flex flex-col items-center gap-3 py-12 text-gray-500 dark:text-gray-400">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+          <p className="text-sm">Loading PDF viewer…</p>
+        </div>
+      }>
+        <PdfViewer
+          url={fileUrl}
+          fileName={fileName}
+          onDownload={async () => {
+            const res = await triggerDownload(fileUrl, fileName);
+            if (res.ok) toast.success(res.path ? `Saved to ${res.path}` : 'Saved successfully');
+            else toast.error('Download failed');
+          }}
+        />
+      </Suspense>
     );
   }
   if (category === 'text' && textContent !== null) {
