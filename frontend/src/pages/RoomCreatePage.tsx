@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { createRoom } from '../api/rooms';
 import { saveSession } from '../hooks/useRoom';
 import { joinRoom } from '../api/rooms';
+import { isNoApiBaseError } from '../api/client';
 
 const EXPIRY_OPTIONS = [
   { label: '1 hour', minutes: 60 },
@@ -28,8 +29,12 @@ export const RoomCreatePage = () => {
       saveSession(room.roomToken, session);
       toast.success('Room created');
       navigate(`/room/${room.roomToken}`);
-    } catch {
-      toast.error('Could not create room');
+    } catch (e) {
+      if (isNoApiBaseError(e)) {
+        toast.error('Connect to a host first: open Settings and set the host address, or scan a Room/Share QR.');
+      } else {
+        toast.error('Could not create room');
+      }
     } finally {
       setBusy(false);
     }

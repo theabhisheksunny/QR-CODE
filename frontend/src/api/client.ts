@@ -39,13 +39,19 @@ client.interceptors.request.use((config) => {
   if (base) {
     config.baseURL = base;
   } else if (Capacitor.isNativePlatform()) {
-    // Native build without a configured host: fail fast with a clear message
-    // instead of issuing a request against the app's own file:// origin.
-    return Promise.reject(
-      new Error('No API base URL configured. Open Settings and set the host (e.g. http://172.20.10.2:8787).')
-    );
+    // Native build without a configured host: fail fast with a clear, tagged
+    // error so the UI can show an actionable message ("connect to a host")
+    // instead of a generic "Upload failed".
+    const err = new Error('No API base URL configured. Open Settings and set the host (e.g. http://192.168.x.x:8787), or scan a Room/Share QR.') as Error & { code?: string };
+    err.name = 'NoApiBaseError';
+    err.code = 'NO_API_BASE';
+    return Promise.reject(err);
   }
   return config;
 });
+
+/** True if an error is the "no API base configured" fast-fail (native, unset host). */
+export const isNoApiBaseError = (e: unknown): boolean =>
+  !!e && typeof e === 'object' && ((e as { code?: string }).code === 'NO_API_BASE' || (e as { name?: string }).name === 'NoApiBaseError');
 
 export default client;

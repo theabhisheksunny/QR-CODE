@@ -1,4 +1,11 @@
 import { Capacitor } from '@capacitor/core';
+// STATIC import (not dynamic): the Capacitor Android WebView fails to fetch a
+// separately code-split chunk for this plugin at runtime ("Failed to fetch
+// dynamically imported module: .../assets/index-*.js"). Bundling the plugin
+// into the main chunk (it is tiny and native-only) avoids the runtime chunk
+// fetch entirely. PdfViewer stays lazy — only this native-plugin import must be
+// static because its dynamic chunk is the one proven to fail on Android.
+import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
 
 /**
  * Scanner service — single abstraction over the native QR/barcode scanner.
@@ -29,12 +36,25 @@ export const scan = async (): Promise<string> => {
     throw new ScannerNotSupportedError();
   }
 
-  const { BarcodeScanner, BarcodeFormat } = await import('@capacitor-mlkit/barcode-scanning');
-
   // Ensure the ML Kit module is available, then request camera permission.
   const { supported } = await BarcodeScanner.isSupported();
   if (!supported) {
     throw new Error('The barcode scanner is not supported on this device.');
+  }
+
+  // scan() uses the Google Barcode Scanner UI module (delivered via Google Play
+  // Services), which may NOT be present on a fresh install. If it is missing,
+  // scan() fails. Ensure it is installed first — this is the documented
+  // prerequisite for the ready-to-use scanner on Android.
+  try {
+    const { available } = await BarcodeScanner.isGoogleBarcodeScannerModuleAvailable();
+    if (!available) {
+      // Triggers the one-time on-device module download; resolves when done.
+      await BarcodeScanner.installGoogleBarcodeScannerModule();
+    }
+  } catch {
+    // isGoogleBarcodeScannerModuleAvailable/install can be unavailable on some
+    // OEM builds; fall through and let scan() surface a precise error.
   }
 
   const permission = await BarcodeScanner.requestPermissions();

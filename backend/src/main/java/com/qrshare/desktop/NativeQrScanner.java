@@ -125,18 +125,19 @@ public class NativeQrScanner {
             reader.setHints(hints);
 
             setStatus("Scanning\u2026");
+            // Decode EVERY frame (the single MultiFormatReader is reused — no
+            // per-frame reader construction). The live preview is refreshed only
+            // on alternate frames to halve the per-frame PNG encode allocation,
+            // which does not affect decode speed/latency.
+            long frame = 0;
             while (running) {
                 BufferedImage image = webcam.getImage();
                 if (image == null) {
-                    sleep(80);
+                    sleep(60);
                     continue;
                 }
-                // Update the live preview on the FX thread.
-                Image fxImage = toFxImage(image);
-                if (fxImage != null) {
-                    Platform.runLater(() -> preview.setImage(fxImage));
-                }
-
+                frame++;
+                // Decode first (latency-critical), then update preview.
                 String decoded = decode(reader, image);
                 if (decoded != null) {
                     running = false;
@@ -147,7 +148,13 @@ public class NativeQrScanner {
                     });
                     return;
                 }
-                sleep(100);
+                if ((frame & 1L) == 0L) { // every other frame: refresh preview
+                    Image fxImage = toFxImage(image);
+                    if (fxImage != null) {
+                        Platform.runLater(() -> preview.setImage(fxImage));
+                    }
+                }
+                sleep(60);
             }
         } catch (Throwable t) {
             String msg = describe(t);

@@ -7,6 +7,7 @@ import { UploadProgress } from '../components/UploadProgress';
 import { FileCard } from '../components/FileCard';
 import { useFileShare } from '../hooks/useFileShare';
 import { useQrHistory } from '../hooks/useQrHistory';
+import { isNoApiBaseError } from '../api/client';
 
 export const FileQrPage = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -32,6 +33,10 @@ export const FileQrPage = () => {
       const name = (err as { name?: string })?.name;
       if (name === 'CanceledError' || name === 'AbortError') {
         toast('Upload cancelled');
+        return;
+      }
+      if (isNoApiBaseError(err)) {
+        toast.error('Connect to a host first: open Settings and set the host address, or scan a Room/Share QR.');
         return;
       }
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;

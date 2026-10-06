@@ -7,3 +7,18 @@
     @apply bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-gray-100 min-h-screen;
   }
 }
+
+/* Subtle QR scan line: a single transform-animated line (GPU-friendly, cheap). */
+@keyframes qr-scan {
+  0%   { top: 8%;  opacity: 0.3; }
+  50%  { top: 90%; opacity: 1; }
+  100% { top: 8%;  opacity: 0.3; }
+}
+.qr-scan-line {
+  top: 8%;
+  animation: qr-scan 2s ease-in-out infinite;
+  will-change: top;
+}
+@media (prefers-reduced-motion: reduce) {
+  .qr-scan-line { animation: none; }
+}
